@@ -106,23 +106,6 @@ main() {
     ls -la "${KERNEL_DIR}/build/" 2>/dev/null || log "kernel/build not found!"
     ls -la "${KERNEL_DIR}/build/kernel/" 2>/dev/null || log "kernel/build/kernel not found!"
 
-    # Fallback: manifest pakai revision yg udah hapus build.sh (main-kernel-build-2023)
-    # Solusi: replace isi build/ dengan android14-6.1 yg masih punya build.sh
-    if [ ! -f "${KERNEL_DIR}/build/kernel/build.sh" ]; then
-        log "build/kernel/build.sh not found! Re-fetching from android14-6.1 branch..."
-        rm -rf "${KERNEL_DIR}/build"
-        curl -fsSL \
-            "https://android.googlesource.com/kernel/build/+archive/refs/heads/android14-6.1.tar.gz" \
-            -o /tmp/kernel-build.tar.gz \
-            || error "Failed to download kernel/build tarball!"
-        mkdir -p "${KERNEL_DIR}/build/kernel"
-        tar -xzf /tmp/kernel-build.tar.gz -C "${KERNEL_DIR}/build/kernel"
-        rm /tmp/kernel-build.tar.gz
-        [ -f "${KERNEL_DIR}/build/kernel/build.sh" ] \
-            || error "build.sh still missing after re-fetch!"
-        chmod +x "${KERNEL_DIR}/build/kernel/build.sh"
-        log "build tools replaced from android14-6.1 ✅"
-    fi
 
     echo "::endgroup::"
 
