@@ -404,7 +404,7 @@ FRAGMENT_EOF
     : > .scmversion
 
     # Set reproducible timestamp from last commit
-    COMMIT_TIMESTAMP=$(git log -1 --format=%ct 2>/dev/null || echo "$(date +%s)")
+    COMMIT_TIMESTAMP=$(date +%s)
     export SOURCE_DATE_EPOCH=$COMMIT_TIMESTAMP
     export KBUILD_BUILD_TIMESTAMP="@${COMMIT_TIMESTAMP}"
     echo "SOURCE_DATE_EPOCH=${COMMIT_TIMESTAMP}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
@@ -452,6 +452,9 @@ LDWRAP_EOF
     tools/bazel build \
         --linkopt="--thinlto-cache-dir=${LD_CACHE_DIR}" \
         --config=fast \
+        --action_env=KBUILD_BUILD_USER="${BUILD_USER}" \
+        --action_env=KBUILD_BUILD_HOST="${BUILD_HOST}" \
+        --action_env=KBUILD_BUILD_TIMESTAMP="$(date)" \
         --defconfig_fragment=//common:arch/arm64/configs/luminaire.fragment \
         --disk_cache="${BAZEL_CACHE_DIR}" \
         //common:kernel_aarch64 \
