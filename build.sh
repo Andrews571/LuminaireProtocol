@@ -55,7 +55,7 @@ main() {
 
     log "Cloning AnyKernel3..."
     git clone --depth=1 -b gki-2.0 \
-        https://github.com/WildKernels/AnyKernel3.git "$AK3_DIR"
+        https://github.com/chainonyourdoor/AnyKernel3-Luminaire.git "$AK3_DIR"
 
     log "Cloning AOSP build-tools..."
     git clone https://android.googlesource.com/kernel/prebuilts/build-tools \
