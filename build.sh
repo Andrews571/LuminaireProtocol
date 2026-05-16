@@ -170,7 +170,7 @@ main() {
     cd "${KERNEL_DIR}"
 
     curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" \
-        | bash -s 4c9737aed458843e920de95b0bcad56cf790663b \
+        | bash -s \
         || error "Failed to setup KernelSU-Next!"
 
     cd "${KERNEL_DIR}/KernelSU-Next/kernel"
@@ -194,12 +194,10 @@ main() {
     cd "${ROOT_DIR}"
 
     SUSFS_BRANCH="gki-${ANDROID_VERSION}-${KERNEL_VERSION}"
-    SUSFS_COMMIT="ef16cbce5c5195988b9b630de85466148cbbcdef"
-
     log "Cloning SUSFS branch: ${SUSFS_BRANCH}..."
     git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH" susfs4ksu \
         || error "Failed to clone SUSFS!"
-    cd susfs4ksu && git checkout "$SUSFS_COMMIT" && cd "${ROOT_DIR}"
+    cd "${ROOT_DIR}"
 
     cd "${KERNEL_DIR}/common"
 
@@ -222,8 +220,20 @@ main() {
 
     # Apply KernelSU-Next SUSFS patch
     cd "${KERNEL_DIR}/KernelSU-Next"
-    cp "${ROOT_DIR}/kernel_patches/wild/ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch" ./
-    patch -p1 < ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch \
+    # Dynamically find matching KSU+SUSFS patch based on actual KSU commit
+    KSU_SHORT=$(cd "${KERNEL_DIR}/KernelSU-Next" && git rev-parse --short HEAD)
+    SUSFS_SHORT=$(cd "${ROOT_DIR}/susfs4ksu" && git rev-parse --short HEAD)
+    KSU_PATCH=$(find "${ROOT_DIR}/kernel_patches/wild" -name "ksun-${KSU_SHORT}*a14-6.1*.patch" | head -1)
+
+    if [ -z "$KSU_PATCH" ]; then
+        log "No exact patch found for KSU ${KSU_SHORT}, trying latest available..."
+        KSU_PATCH=$(find "${ROOT_DIR}/kernel_patches/wild" -name "ksun-*a14-6.1*.patch" | sort | tail -1)
+    fi
+
+    [ -n "$KSU_PATCH" ] || error "No KSU SUSFS patch found!"
+    log "Using patch: $(basename $KSU_PATCH)"
+    cp "$KSU_PATCH" ./
+    patch -p1 < "$(basename $KSU_PATCH)" \
         || error "KSU SUSFS patch failed!"
 
     # Apply SUSFS main kernel patch
