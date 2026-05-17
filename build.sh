@@ -6,6 +6,8 @@
 
 set -euo pipefail
 
+source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
+
 # ======================================================
 # ⚙️ CONFIGURATION
 # ======================================================
@@ -20,14 +22,16 @@ BUILD_HOST="LuminaireCI"
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KERNEL_DIR="${ROOT_DIR}/kernel"
 AK3_DIR="${ROOT_DIR}/AnyKernel3"
-FRAGMENT="${ROOT_DIR}/luminaire.fragment"
+PATCHES_REPO="${ROOT_DIR}/luminaire-patches"
 LOG_FILE="/tmp/luminaire-$(date +%s).log"
 touch "$LOG_FILE"
 
 BAZEL_CACHE_DIR="${HOME}/.cache/bazel"
 LD_CACHE_DIR="${HOME}/.ld_cache"
 
-source "${ROOT_DIR}/functions.sh"
+# ======================================================
+# 🚀 MAIN
+# ======================================================
 
 main() {
     exec 1> >(tee -a "$LOG_FILE") 2>&1
@@ -41,11 +45,26 @@ main() {
     log "========================================"
     echo ""
 
-    # ======================================================
-    # 📦 SETUP BUILD ENVIRONMENT
-    # ======================================================
+    setup_environment
+    download_kernel_source
+    apply_fixes
+    apply_patches
+    build_kernel
+    package_anykernel3
+    send_telegram
+}
+
+# ======================================================
+# 📦 SETUP BUILD ENVIRONMENT
+# ======================================================
+
+setup_environment() {
     echo "::group::📦 Setup Build Environment"
     mkdir -p "$KERNEL_DIR"
+
+    log "Cloning patches repo..."
+    git clone --depth=1 \
+        https://github.com/chainonyourdoor/LuminaireProtocol-patches.git "$PATCHES_REPO"
 
     log "Cloning AnyKernel3..."
     git clone --depth=1 \
@@ -65,10 +84,13 @@ main() {
     export BOOT_SIGN_KEY_PATH="${ROOT_DIR}/kernel-build-tools/linux-x86/share/avb/testkey_rsa2048.pem"
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📥 DOWNLOAD KERNEL SOURCE
-    # ======================================================
+# ======================================================
+# 📥 DOWNLOAD KERNEL SOURCE
+# ======================================================
+
+download_kernel_source() {
     echo "::group::📥 Kernel Source"
     log "Fetching manifest for ${FORMATTED_BRANCH}..."
     cd "$KERNEL_DIR"
@@ -87,10 +109,13 @@ main() {
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 🔧 GLIBC FIX (>= 2.38)
-    # ======================================================
+# ======================================================
+# 🔧 APPLY FIXES
+# ======================================================
+
+apply_fixes() {
     echo "::group::🔧 Kernel Fixes"
     cd "${KERNEL_DIR}/common"
 
@@ -101,122 +126,73 @@ main() {
             tools/bpf/resolve_btfids/Makefile 2>/dev/null || true
     fi
 
-    echo "::endgroup::"
-
-    # ======================================================
-    # 🧹 CLEAN DIRTY FLAGS
-    # ======================================================
-    echo "::group::🧹 Clean Dirty Flags"
-    cd "${KERNEL_DIR}/common"
-
     sed -i 's/-dirty//' scripts/setlocalversion
 
     if [ -f "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl" ]; then
         sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" \
             "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
+        sed -i "s/build-user/${BUILD_USER}/g" \
+            "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
+        sed -i "s/build-host/${BUILD_HOST}/g" \
+            "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
     fi
 
     git config --global user.name "github-actions[bot]"
     git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    git add . && git commit -m "Luminaire: Clean Dirty Flag" || true
+    git add . && git commit -m "Luminaire: Apply fixes" || true
 
-    echo "::endgroup::"
-
-    # ======================================================
-    # 🔓 MODULE VERSION CHECK BYPASS
-    # ======================================================
-    echo "::group::🔓 Module Version Bypass"
     cd "${KERNEL_DIR}"
-
-    # Vendor modules on this device were compiled for a different sublevel.
-    # Without this bypass, mismatched modules are rejected at load time,
-    # causing WiFi, BT and other hardware to fail.
     MODULE_VERSION_FILE="common/kernel/module/version.c"
     if [ -f "$MODULE_VERSION_FILE" ]; then
         sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' \
             "$MODULE_VERSION_FILE" \
             && log "Module version bypass applied ✅" \
-            || log "Module version bypass: pattern not found (may already applied)"
+            || log "Module version bypass: pattern not found"
     fi
 
-    echo "::endgroup::"
-
-    # ======================================================
-    # 🗑️ REMOVE PROTECTED EXPORTS (required for Kleaf)
-    # ======================================================
-    echo "::group::🗑️ Remove Protected Exports"
-    cd "${KERNEL_DIR}"
-
-    rm -rf common/android/abi_gki_protected_exports_*
-
+    rm -rf "${KERNEL_DIR}/common/android/abi_gki_protected_exports_"*
     perl -pi -e 's/^\s*"protected_exports_list"\s*:\s*"android\/abi_gki_protected_exports_aarch64",\s*$//;' \
-        common/BUILD.bazel 2>/dev/null || true
-
+        "${KERNEL_DIR}/common/BUILD.bazel" 2>/dev/null || true
     sed -i 's/protected_modules = \[.*\]/protected_modules = []/' \
-        common/modules.bzl 2>/dev/null || true
+        "${KERNEL_DIR}/common/modules.bzl" 2>/dev/null || true
 
-    log "Protected exports removed ✅"
+    log "Fixes applied ✅"
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📝 BUILD FRAGMENT
-    # ======================================================
-    echo "::group::📝 Build Fragment"
+# ======================================================
+# 🩹 APPLY PATCHES
+# ======================================================
 
-    cat > "$FRAGMENT" << 'FRAGMENT_EOF'
-CONFIG_LOCALVERSION="-Luminaire"
-# CONFIG_LOCALVERSION_AUTO is not set
-
-# Mountify Support
-CONFIG_OVERLAY_FS=y
-CONFIG_TMPFS_XATTR=y
-CONFIG_TMPFS_POSIX_ACL=y
-
-# Debugging symbols
-CONFIG_KALLSYMS=y
-CONFIG_KALLSYMS_ALL=y
-
-# TCP Congestion Control
-CONFIG_TCP_CONG_ADVANCED=y
-CONFIG_TCP_CONG_BBR=y
-CONFIG_DEFAULT_BBR=y
-CONFIG_DEFAULT_TCP_CONG="bbr"
-CONFIG_TCP_CONG_BIC=y
-CONFIG_TCP_CONG_WESTWOOD=y
-CONFIG_TCP_CONG_HTCP=y
-CONFIG_NET_SCH_FQ=y
-CONFIG_NET_SCH_FQ_CODEL=y
-
-# IP SET & IPv6 NAT
-CONFIG_IP_SET=y
-CONFIG_IP_SET_MAX=65534
-CONFIG_IP_SET_HASH_IP=y
-CONFIG_IP_SET_HASH_NET=y
-CONFIG_IP6_NF_NAT=y
-CONFIG_IP6_NF_TARGET_MASQUERADE=y
-FRAGMENT_EOF
-
-    cp "$FRAGMENT" "${KERNEL_DIR}/common/arch/arm64/configs/luminaire.fragment"
-    log "Fragment ready ✅"
-    echo "::endgroup::"
-
-    # ======================================================
-    # 🏷️ KERNEL BRANDING
-    # ======================================================
-    echo "::group::🏷️ Kernel Branding"
+apply_patches() {
+    echo "::group::🩹 Apply Patches"
     cd "${KERNEL_DIR}/common"
+
+    cp "${PATCHES_REPO}/luminaire.fragment" arch/arm64/configs/luminaire.fragment
+    log "Fragment copied ✅"
+
+    if [ -d "${PATCHES_REPO}/patches" ] && [ -n "$(ls -A "${PATCHES_REPO}/patches/"*.py 2>/dev/null)" ]; then
+        for script in "${PATCHES_REPO}/patches/"*.py; do
+            log "Running patch script: $(basename "$script")..."
+            python3 "$script" || error "Patch script failed: $script"
+        done
+    fi
 
     chmod +x scripts/setlocalversion
     : > .scmversion
 
     export SOURCE_DATE_EPOCH=$(date +%s)
     export KBUILD_BUILD_TIMESTAMP="$(date)"
-    log "Branding applied ✅"
-    echo "::endgroup::"
 
-    # ======================================================
-    # 🏗️ BUILD KERNEL (Kleaf)
-    # ======================================================
+    log "Patches applied ✅"
+    echo "::endgroup::"
+}
+
+# ======================================================
+# 🏗️ BUILD KERNEL (Kleaf)
+# ======================================================
+
+build_kernel() {
     echo "::group::🏗️ Build Kernel"
     cd "${KERNEL_DIR}"
 
@@ -255,10 +231,13 @@ FRAGMENT_EOF
     echo "BUILD_SECONDS=${BUILD_SECONDS}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📦 PACKAGE ANYKERNEL3
-    # ======================================================
+# ======================================================
+# 📦 PACKAGE ANYKERNEL3
+# ======================================================
+
+package_anykernel3() {
     echo "::group::📦 Package AnyKernel3"
 
     IMAGE_PATH="${KERNEL_DIR}/bazel-bin/common/kernel_aarch64/Image"
@@ -280,17 +259,20 @@ FRAGMENT_EOF
     echo "ZIP_PATH=${ZIP_PATH}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📲 TELEGRAM
-    # ======================================================
+# ======================================================
+# 📲 TELEGRAM
+# ======================================================
+
+send_telegram() {
     echo "::group::📲 Telegram"
 
     LINUX_VERSION=$(grep -E "^VERSION|^PATCHLEVEL|^SUBLEVEL" \
         "${KERNEL_DIR}/common/Makefile" | awk '{print $3}' | \
         tr '\n' '.' | sed 's/\.$//')
 
-    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -f "$ZIP_PATH" ]; then
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -f "${ZIP_PATH:-}" ]; then
         curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F "chat_id=${TELEGRAM_CHAT_ID}" \
             ${TELEGRAM_THREAD_ID_BUILD:+-F "message_thread_id=${TELEGRAM_THREAD_ID_BUILD}"} \
@@ -302,13 +284,11 @@ Date  : $(date +'%d %b %Y')" \
     fi
 
     echo "::endgroup::"
-
-    echo ""
-    log "========================================"
-    log "  ✅ Build Complete! — ${ZIP_NAME}"
-    log "========================================"
-    echo ""
 }
+
+# ======================================================
+# 🧹 CLEANUP
+# ======================================================
 
 cleanup() {
     if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -f "${LOG_FILE:-}" ]; then
