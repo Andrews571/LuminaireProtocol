@@ -193,7 +193,7 @@ main() {
     echo "::group::🛡️ SUSFS"
     cd "${ROOT_DIR}"
 
-    SUSFS_BRANCH="gki-${ANDROID_VERSION}-${KERNEL_VERSION}"
+    SUSFS_BRANCH="gki-${ANDROID_VERSION}-${KERNEL_VERSION}-dev"
     log "Cloning SUSFS branch: ${SUSFS_BRANCH}..."
     git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH" susfs4ksu \
         || error "Failed to clone SUSFS!"
@@ -245,9 +245,12 @@ main() {
 
     log "SUSFS setup ✅"
 
-    # Apply SUSFS changes to KernelSU-Next (after SUSFS headers are in place)
-    python3 "${ROOT_DIR}/patches/apply_susfs_to_ksu.py" "${KERNEL_DIR}/KernelSU-Next" \
-        || error "SUSFS apply to KSU-Next failed!"
+    # Apply SUSFS to KernelSU-Next using our generated patch
+    cd "${KERNEL_DIR}/KernelSU-Next"
+    patch -p1 < "${ROOT_DIR}/patches/ksun-latest-susfs-dev-a14-6.1.patch" \
+        || error "SUSFS KSU patch failed!"
+    log "SUSFS applied to KernelSU-Next ✅"
+    cd "${ROOT_DIR}"
 
     echo "::endgroup::"
 
