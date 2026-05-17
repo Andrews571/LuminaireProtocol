@@ -164,7 +164,7 @@ main() {
     echo "::group::📝 Build Fragment"
 
     cat > "$FRAGMENT" << 'FRAGMENT_EOF'
-CONFIG_LOCALVERSION=""
+CONFIG_LOCALVERSION="-Luminaire"
 # CONFIG_LOCALVERSION_AUTO is not set
 
 # Mountify Support
@@ -203,7 +203,6 @@ FRAGMENT_EOF
     echo "::group::🏷️ Kernel Branding"
     cd "${KERNEL_DIR}/common"
 
-    echo 'echo "-Luminaire"' >> scripts/setlocalversion
     chmod +x scripts/setlocalversion
     : > .scmversion
 
