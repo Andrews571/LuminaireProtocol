@@ -22,7 +22,7 @@ BUILD_HOST="LuminaireCI"
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KERNEL_DIR="${ROOT_DIR}/kernel"
 AK3_DIR="${ROOT_DIR}/AnyKernel3"
-PATCHES_REPO="${ROOT_DIR}/luminaire-patches"
+PATCH_REPO="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 LOG_FILE="/tmp/luminaire-$(date +%s).log"
 touch "$LOG_FILE"
 
@@ -47,8 +47,8 @@ main() {
 
     setup_environment
     download_kernel_source
-    apply_fixes
-    apply_patches
+    run_fixes
+    run_patches
     build_kernel
     package_anykernel3
     send_telegram
@@ -62,9 +62,10 @@ setup_environment() {
     echo "::group::📦 Setup Build Environment"
     mkdir -p "$KERNEL_DIR"
 
-    log "Cloning patches repo..."
+    log "Cloning Luminaire-Patch..."
     git clone --depth=1 \
-        https://github.com/chainonyourdoor/LuminaireProtocol-patches.git "$PATCHES_REPO"
+        https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/Luminaire-Patch.git \
+        "${ROOT_DIR}/Luminaire-Patch"
 
     log "Cloning AnyKernel3..."
     git clone --depth=1 \
@@ -112,79 +113,38 @@ download_kernel_source() {
 }
 
 # ======================================================
-# 🔧 APPLY FIXES
+# 🔧 RUN FIXES
 # ======================================================
 
-apply_fixes() {
+run_fixes() {
     echo "::group::🔧 Kernel Fixes"
-    cd "${KERNEL_DIR}/common"
 
-    GLIBC_VERSION="$(ldd --version 2>/dev/null | head -n 1 | awk '{print $NF}')"
-    if [ "$(printf '%s\n' "2.38" "$GLIBC_VERSION" | sort -V | head -n 1)" = "2.38" ]; then
-        log "Applying GLIBC >= 2.38 fix..."
-        sed -i 's/$(Q)$(MAKE) -C $(SUBCMD_SRC) OUTPUT=$(abspath $(dir $@))\/ $(abspath $@)/$(Q)$(MAKE) -C $(SUBCMD_SRC) EXTRA_CFLAGS="$(CFLAGS)" OUTPUT=$(abspath $(dir $@))\/ $(abspath $@)/' \
-            tools/bpf/resolve_btfids/Makefile 2>/dev/null || true
-    fi
+    for fix in "${PATCH_REPO}/fixes/"*.sh; do
+        log "Applying fix: $(basename "$fix")..."
+        source "$fix" || error "Fix failed: $(basename "$fix")"
+    done
 
-    sed -i 's/-dirty//' scripts/setlocalversion
-
-    if [ -f "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl" ]; then
-        sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" \
-            "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
-        sed -i "s/build-user/${BUILD_USER}/g" \
-            "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
-        sed -i "s/build-host/${BUILD_HOST}/g" \
-            "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl"
-    fi
-
-    git config --global user.name "github-actions[bot]"
-    git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    git add . && git commit -m "Luminaire: Apply fixes" || true
-
-    cd "${KERNEL_DIR}"
-    MODULE_VERSION_FILE="common/kernel/module/version.c"
-    if [ -f "$MODULE_VERSION_FILE" ]; then
-        sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' \
-            "$MODULE_VERSION_FILE" \
-            && log "Module version bypass applied ✅" \
-            || log "Module version bypass: pattern not found"
-    fi
-
-    rm -rf "${KERNEL_DIR}/common/android/abi_gki_protected_exports_"*
-    perl -pi -e 's/^\s*"protected_exports_list"\s*:\s*"android\/abi_gki_protected_exports_aarch64",\s*$//;' \
-        "${KERNEL_DIR}/common/BUILD.bazel" 2>/dev/null || true
-    sed -i 's/protected_modules = \[.*\]/protected_modules = []/' \
-        "${KERNEL_DIR}/common/modules.bzl" 2>/dev/null || true
-
-    log "Fixes applied ✅"
+    log "All fixes applied ✅"
     echo "::endgroup::"
 }
 
 # ======================================================
-# 🩹 APPLY PATCHES
+# 🩹 RUN PATCHES
 # ======================================================
 
-apply_patches() {
+run_patches() {
     echo "::group::🩹 Apply Patches"
     cd "${KERNEL_DIR}/common"
 
-    cp "${PATCHES_REPO}/luminaire.fragment" arch/arm64/configs/luminaire.fragment
+    cp "${PATCH_REPO}/luminaire.fragment" arch/arm64/configs/luminaire.fragment
     log "Fragment copied ✅"
 
-    if [ -d "${PATCHES_REPO}/patches" ] && [ -n "$(ls -A "${PATCHES_REPO}/patches/"*.py 2>/dev/null)" ]; then
-        for script in "${PATCHES_REPO}/patches/"*.py; do
-            log "Running patch script: $(basename "$script")..."
-            python3 "$script" || error "Patch script failed: $script"
-        done
-    fi
+    for script in "${PATCH_REPO}/patches/"*.py; do
+        log "Running: $(basename "$script")..."
+        python3 "$script" || error "Patch script failed: $(basename "$script")"
+    done
 
-    chmod +x scripts/setlocalversion
-    : > .scmversion
-
-    export SOURCE_DATE_EPOCH=$(date +%s)
-    export KBUILD_BUILD_TIMESTAMP="$(date)"
-
-    log "Patches applied ✅"
+    log "All patches applied ✅"
     echo "::endgroup::"
 }
 
