@@ -8,10 +8,54 @@ env:
 
 jobs:
 
+  # ======================================================
+  # 📦 PREP — Download tools, save arsenal cache
+  # ======================================================
+  prep:
+    name: "📦 Prep Arsenal"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      PERSONAL_TOKEN:   ${{ secrets.PERSONAL_TOKEN }}
+      PREP_MODE:        "true"
+
+    steps:
+      - name: "🌀 Clone LuminaireProtocol"
+        run: |
+          git clone --filter=blob:none \
+            "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" \
+            .
+
+      - name: "♻️ Restore arsenal cache"
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/clang-cache
+            ~/ccache-bin
+            ~/ak3-cache
+          key: arsenal-${{ github.ref_name }}
+
+      - name: "📦 Run Prep"
+        run: bash build.sh
+
+      - name: "💾 Save arsenal cache"
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/clang-cache
+            ~/ccache-bin
+            ~/ak3-cache
+          key: arsenal-${{ github.ref_name }}
+
+  # ======================================================
+  # 🏗️ BUILD — Restore arsenal, build kernel
+  # ======================================================
   build:
     name: "✨ Build Luminaire Protocol"
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    needs: prep
 
     env:
       PERSONAL_TOKEN:           ${{ secrets.PERSONAL_TOKEN }}
@@ -20,7 +64,6 @@ jobs:
       TELEGRAM_THREAD_ID_BUILD: ${{ secrets.TELEGRAM_THREAD_ID_BUILD }}
       TELEGRAM_THREAD_ID_LOG:   ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
       USE_KERNEL_CACHE:         "true"
-      USE_CLANG_CACHE:          "true"
       USE_AK3_CACHE:            "true"
       CCACHE_DIR:               ${{ github.workspace }}/.ccache
 
@@ -31,6 +74,15 @@ jobs:
             "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" \
             .
 
+      - name: "♻️ Restore arsenal cache"
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/clang-cache
+            ~/ccache-bin
+            ~/ak3-cache
+          key: arsenal-${{ github.ref_name }}
+
       - name: "♻️ Restore ccache"
         uses: actions/cache/restore@v5
         with:
@@ -38,27 +90,14 @@ jobs:
           key: ccache-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: ccache-${{ github.ref_name }}-
 
-      - name: "♻️ Restore Greenforce Clang"
-        uses: actions/cache/restore@v5
-        with:
-          path: ~/clang-cache
-          key: clang-greenforce-${{ github.ref_name }}
-
       - name: "♻️ Restore kernel source"
         uses: actions/cache/restore@v5
         with:
           path: ~/kernel-cache
           key: kernel-src-${{ github.ref_name }}
 
-      - name: "♻️ Restore AnyKernel3"
-        uses: actions/cache/restore@v5
-        with:
-          path: ~/ak3-cache
-          key: ak3-${{ github.ref_name }}
-
       - name: "✨ Build"
         run: bash build.sh
-
 
       - name: "💾 Save ccache"
         if: always()
@@ -67,26 +106,12 @@ jobs:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ github.ref_name }}-${{ github.run_id }}
 
-      - name: "💾 Save Greenforce Clang"
-        if: always()
-        uses: actions/cache/save@v5
-        with:
-          path: ~/clang-cache
-          key: clang-greenforce-${{ github.ref_name }}
-
       - name: "💾 Save kernel source"
         if: always()
         uses: actions/cache/save@v5
         with:
           path: ~/kernel-cache
           key: kernel-src-${{ github.ref_name }}
-
-      - name: "💾 Save AnyKernel3"
-        if: always()
-        uses: actions/cache/save@v5
-        with:
-          path: ~/ak3-cache
-          key: ak3-${{ github.ref_name }}
 
       - name: "🧹 Cleanup old caches"
         if: always()
@@ -105,5 +130,6 @@ jobs:
                 gh api --method DELETE "/repos/${{ github.repository }}/actions/caches/${ID}" || true
               done
             fi
-          }
+          fi
           cleanup_cache "ccache-${{ github.ref_name }}-" "ccache-${{ github.ref_name }}-${{ github.run_id }}"
+          cleanup_cache "kernel-src-${{ github.ref_name }}" "kernel-src-${{ github.ref_name }}"

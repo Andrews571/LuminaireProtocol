@@ -12,16 +12,20 @@ source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 # ⚙️ CONFIGURATION
 # ======================================================
 
+ANDROID_VERSION="android14"
+KERNEL_VERSION="6.1"
+KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
+
 KERNEL_NAME="Luminaire"
 BUILD_USER="chainonyourdoor"
 BUILD_HOST="LuminaireCI"
 
 KERNEL_REPO="https://github.com/chainonyourdoor/android_kernel_common-6.1"
-KERNEL_BRANCH="android14-6.1-lts"
 DEFCONFIG="gki_defconfig"
 ARCH="arm64"
 
 VARIANT="${VARIANT:-VANILLA}"
+PREP_MODE="${PREP_MODE:-false}"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORK_DIR="${ROOT_DIR}/workspace"
@@ -30,7 +34,7 @@ CLANG_BIN="${CLANG_DIR}/bin"
 KERNEL_SRC="${WORK_DIR}/kernel"
 AK3_DIR="${WORK_DIR}/AnyKernel3"
 OUT_DIR="${WORK_DIR}/out"
-PATCH_REPO="${ROOT_DIR}/Luminaire-Patch/android14-6.1-lts"
+PATCH_REPO="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
 CCACHE_BIN="${ROOT_DIR}/ccache-bin/ccache"
 CCACHE_WRAPPER_DIR="${ROOT_DIR}/ccache-wrappers"
@@ -39,9 +43,6 @@ export CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-5G}"
 export CCACHE_COMPRESS=1
 export CCACHE_COMPRESSLEVEL=1
 
-CLANG_CACHE_DIR="${HOME}/clang-cache"
-KERNEL_CACHE_DIR="${HOME}/kernel-cache"
-
 DATE=$(date +"%b%d")
 ZIP_NAME="LuminaireProtocol-${DATE}R${GITHUB_RUN_NUMBER:-0}.zip"
 
@@ -49,57 +50,9 @@ LOG_FILE="/tmp/luminaire-$(date +%s).log"
 touch "$LOG_FILE"
 
 # ======================================================
-# ⚡ CCACHE SETUP
-# ======================================================
-setup_ccache() {
-    local CCACHE_HOME="${HOME}/ccache-bin"
-
-    if [ ! -f "${CCACHE_HOME}/ccache" ]; then
-        log "Building ccache-ECS from source..."
-        sudo apt-get install -y --no-install-recommends \
-            cmake ninja-build g++ libzstd-dev > /dev/null 2>&1
-        git clone --depth=1 -b ccache-ECS-v1.0 \
-            https://github.com/cctv18/ccache-ECS /tmp/ccache-ECS
-        cmake -S /tmp/ccache-ECS -B /tmp/ccache-build \
-            -GNinja -DCMAKE_BUILD_TYPE=Release \
-            -DZSTD_FROM_INTERNET=OFF -DENABLE_TESTING=OFF \
-            -DENABLE_DOCUMENTATION=OFF -DENABLE_IPO=ON \
-            -DREDIS_STORAGE_BACKEND=OFF \
-            -DHTTP_STORAGE_BACKEND=OFF > /dev/null 2>&1
-        cmake --build /tmp/ccache-build -j$(nproc) > /dev/null 2>&1
-        mkdir -p "${CCACHE_HOME}"
-        cp /tmp/ccache-build/ccache "${CCACHE_HOME}/ccache"
-        log "ccache-ECS built ✅"
-    fi
-
-    mkdir -p "${ROOT_DIR}/ccache-bin"
-    cp "${CCACHE_HOME}/ccache" "${ROOT_DIR}/ccache-bin/ccache"
-    chmod +x "${ROOT_DIR}/ccache-bin/ccache"
-
-    log "Setting up ccache wrappers..."
-    mkdir -p "$CCACHE_WRAPPER_DIR"
-    for tool in clang clang++ clang-17 clang-18 clang-19 clang-20; do
-        REAL_BIN="${CLANG_BIN}/${tool}"
-        WRAPPER="${CCACHE_WRAPPER_DIR}/${tool}"
-        if [ -f "$REAL_BIN" ]; then
-            cat > "$WRAPPER" << WRAPPER_EOF
-#!/usr/bin/env bash
-exec "${CCACHE_BIN}" "${REAL_BIN}" "\$@"
-WRAPPER_EOF
-            chmod +x "$WRAPPER"
-        fi
-    done
-
-    export PATH="${CCACHE_WRAPPER_DIR}:${PATH}"
-    export CCACHE_COMPILER="${CLANG_BIN}/clang"
-    export CCACHE_BASEDIR="$KERNEL_SRC"
-    $CCACHE_BIN --zero-stats > /dev/null 2>&1 || true
-    log "ccache ready | dir: ${CCACHE_DIR} | max: ${CCACHE_MAXSIZE}"
-}
-
-# ======================================================
 # 🚀 MAIN
 # ======================================================
+
 main() {
     exec 1> >(tee -a "$LOG_FILE") 2>&1
 
@@ -114,30 +67,61 @@ main() {
 
     mkdir -p "$WORK_DIR" "$OUT_DIR"
 
-    # ======================================================
-    # 📦 SETUP
-    # ======================================================
-    echo "::group::📦 Setup"
+    clone_patch_repo
 
+    if [ "$PREP_MODE" = "true" ]; then
+        run_setup
+        log "========================================"
+        log "  ✅ Prep Complete!"
+        log "========================================"
+        exit 0
+    fi
+
+    run_setup
+    download_kernel_source
+    run_fixes
+    run_patches
+    build_kernel
+    package_anykernel3
+    send_telegram
+}
+
+# ======================================================
+# 🔑 CLONE PATCH REPO
+# ======================================================
+
+clone_patch_repo() {
+    echo "::group::🔑 Luminaire-Patch"
     log "Cloning Luminaire-Patch..."
     git clone --depth=1 \
         https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/Luminaire-Patch.git \
         "${ROOT_DIR}/Luminaire-Patch"
-
-    sudo apt-get install -y --no-install-recommends \
-        bc bison flex libssl-dev libelf-dev dwarves \
-        cpio git curl wget zip patch rsync > /dev/null 2>&1
-
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📥 KERNEL SOURCE
-    # ======================================================
+# ======================================================
+# 📦 RUN SETUP
+# ======================================================
+
+run_setup() {
+    echo "::group::📦 Setup"
+    for script in "${PATCH_REPO}/setup/"*.sh; do
+        log "Running setup: $(basename "$script")..."
+        source "$script" || error "Setup failed: $(basename "$script")"
+    done
+    echo "::endgroup::"
+}
+
+# ======================================================
+# 📥 DOWNLOAD KERNEL SOURCE
+# ======================================================
+
+download_kernel_source() {
     echo "::group::📥 Kernel Source"
 
-    if [ "${USE_KERNEL_CACHE:-false}" = "true" ] && [ -d "${KERNEL_CACHE_DIR}/arch" ]; then
+    if [ "${USE_KERNEL_CACHE:-false}" = "true" ] && [ -d "${HOME}/kernel-cache/arch" ]; then
         log "Restoring kernel source from cache..."
-        cp -a "${KERNEL_CACHE_DIR}/." "${KERNEL_SRC}/"
+        cp -a "${HOME}/kernel-cache/." "${KERNEL_SRC}/"
         log "Kernel source restored ✅"
     else
         log "Cloning kernel source..."
@@ -147,8 +131,8 @@ main() {
             "$KERNEL_REPO" \
             "$KERNEL_SRC" || error "Failed to clone kernel!"
         log "Saving to cache..."
-        mkdir -p "${KERNEL_CACHE_DIR}"
-        rsync -a --exclude='.git' "${KERNEL_SRC}/" "${KERNEL_CACHE_DIR}/"
+        mkdir -p "${HOME}/kernel-cache"
+        rsync -a --exclude='.git' "${KERNEL_SRC}/" "${HOME}/kernel-cache/"
     fi
 
     SUBLEVEL="$(grep '^SUBLEVEL = ' "${KERNEL_SRC}/Makefile" | awk '{print $3}')"
@@ -156,77 +140,41 @@ main() {
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 🧰 GREENFORCE CLANG
-    # ======================================================
-    echo "::group::🧰 Greenforce Clang"
+# ======================================================
+# 🔧 RUN FIXES
+# ======================================================
 
-    if [ "${USE_CLANG_CACHE:-false}" = "true" ] && [ -d "${CLANG_CACHE_DIR}/bin" ]; then
-        log "Restoring Clang from cache..."
-        cp -a "${CLANG_CACHE_DIR}/." "${CLANG_DIR}/"
-        log "Clang restored ✅"
-    else
-        log "Downloading Greenforce Clang..."
-        wget -qO- https://raw.githubusercontent.com/greenforce-project/greenforce_clang/refs/heads/main/get_clang.sh \
-            | bash &> /dev/null
-        [ ! -d "$CLANG_BIN" ] && error "Clang not found!"
-        mkdir -p "${CLANG_CACHE_DIR}"
-        cp -a "${CLANG_DIR}/." "${CLANG_CACHE_DIR}/"
-        log "Clang saved to cache ✅"
-    fi
-
-    set +o pipefail
-    CLANG_VER=$(${CLANG_BIN}/clang --version 2>&1 | head -1 || true)
-    COMPILER_STRING=$(${CLANG_BIN}/clang -v 2>&1 | head -1 | sed 's/(https.*//' | sed 's/ version//' || true)
-    set -o pipefail
-
-    log "Clang ready: ${CLANG_VER}"
-    echo "COMPILER_STRING=${COMPILER_STRING}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
-    export PATH="${CLANG_BIN}:${PATH}"
-
-    echo "::endgroup::"
-
-    # ======================================================
-    # ⚡ CCACHE
-    # ======================================================
-    echo "::group::⚡ Ccache"
-    setup_ccache
-    echo "::endgroup::"
-
-    # ======================================================
-    # 🔧 FIXES
-    # ======================================================
+run_fixes() {
     echo "::group::🔧 Fixes"
+
     for fix in "${PATCH_REPO}/fixes/"*.sh; do
         log "Applying: $(basename "$fix")..."
         source "$fix" || error "Fix failed: $(basename "$fix")"
     done
-    log "All fixes applied ✅"
 
-    # Apply kernel patches
     for patch in "${PATCH_REPO}/patches/"*.patch; do
         [ -f "$patch" ] || continue
-        log "Applying patch: $(basename $patch)..."
-        patch -p1 -d "$KERNEL_SRC" < "$patch"             || error "Patch failed: $(basename $patch)"
+        log "Applying patch: $(basename "$patch")..."
+        patch -p1 -d "$KERNEL_SRC" < "$patch" || error "Patch failed: $(basename "$patch")"
     done
-    log "All patches applied ✅"
 
+    log "All fixes applied ✅"
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 🏗️ BUILD KERNEL
-    # ======================================================
-    echo "::group::🏗️ Build Kernel"
+# ======================================================
+# 🩹 RUN PATCHES (defconfig)
+# ======================================================
+
+run_patches() {
+    echo "::group::🩹 Patches"
 
     export KBUILD_BUILD_USER="$BUILD_USER"
     export KBUILD_BUILD_HOST="$BUILD_HOST"
     export KBUILD_BUILD_TIMESTAMP="$(date)"
     export KCFLAGS="-w"
-
-    SHORT_COMMIT="$(git -C "$KERNEL_SRC" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
-    LOCALVERSION="-${KERNEL_NAME}"
-    touch "${KERNEL_SRC}/.scmversion"
 
     MAKE_ARGS=(
         -C "$KERNEL_SRC"
@@ -236,9 +184,11 @@ main() {
         CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
         LLVM=1
         LLVM_IAS=1
-        LOCALVERSION="$LOCALVERSION"
+        LOCALVERSION="-${KERNEL_NAME}"
         -j"$(nproc --all)"
     )
+
+    touch "${KERNEL_SRC}/.scmversion"
 
     log "Generating defconfig..."
     make "${MAKE_ARGS[@]}" "$DEFCONFIG" || error "Defconfig failed!"
@@ -248,6 +198,16 @@ main() {
 
     log "Syncing config..."
     make "${MAKE_ARGS[@]}" olddefconfig || error "olddefconfig failed!"
+
+    echo "::endgroup::"
+}
+
+# ======================================================
+# 🏗️ BUILD KERNEL
+# ======================================================
+
+build_kernel() {
+    echo "::group::🏗️ Build Kernel"
 
     log "Building kernel..."
     START_TIME=$(date +%s)
@@ -274,10 +234,13 @@ main() {
     echo "BUILD_SECONDS=${BUILD_SECONDS}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📦 PACKAGE
-    # ======================================================
+# ======================================================
+# 📦 PACKAGE ANYKERNEL3
+# ======================================================
+
+package_anykernel3() {
     echo "::group::📦 Package AnyKernel3"
 
     if [ "${USE_AK3_CACHE:-false}" = "true" ] && [ -d "${HOME}/ak3-cache" ]; then
@@ -314,10 +277,13 @@ main() {
     echo "ZIP_PATH=${ZIP_PATH}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 
     echo "::endgroup::"
+}
 
-    # ======================================================
-    # 📲 TELEGRAM
-    # ======================================================
+# ======================================================
+# 📲 TELEGRAM
+# ======================================================
+
+send_telegram() {
     echo "::group::📲 Telegram"
 
     LINUX_VERSION=$(make -C "$KERNEL_SRC" kernelversion 2>/dev/null | \
@@ -336,13 +302,11 @@ Date      : $(date +'%d %b %Y')" \
     fi
 
     echo "::endgroup::"
-
-    echo ""
-    log "========================================"
-    log "  ✅ Build Complete! — ${ZIP_NAME}"
-    log "========================================"
-    echo ""
 }
+
+# ======================================================
+# 🧹 CLEANUP
+# ======================================================
 
 cleanup() {
     if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -f "${LOG_FILE:-}" ]; then
