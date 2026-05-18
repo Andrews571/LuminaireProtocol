@@ -20,7 +20,6 @@ KERNEL_NAME="Luminaire"
 BUILD_USER="chainonyourdoor"
 BUILD_HOST="LuminaireCI"
 
-KERNEL_REPO="https://github.com/chainonyourdoor/android_kernel_common-6.1"
 DEFCONFIG="gki_defconfig"
 ARCH="arm64"
 
@@ -32,7 +31,8 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORK_DIR="${ROOT_DIR}/workspace"
 CLANG_DIR="${ROOT_DIR}/greenforce-clang"
 CLANG_BIN="${CLANG_DIR}/bin"
-KERNEL_SRC="${WORK_DIR}/common"
+KERNEL_DIR="${WORK_DIR}/kernel"
+KERNEL_SRC="${KERNEL_DIR}/common"
 AK3_DIR="${WORK_DIR}/AnyKernel3"
 OUT_DIR="${WORK_DIR}/out"
 PATCH_REPO="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
@@ -68,12 +68,13 @@ main() {
     log "========================================"
     echo ""
 
-    mkdir -p "$WORK_DIR" "$OUT_DIR"
+    mkdir -p "$KERNEL_DIR" "$OUT_DIR"
 
     clone_patch_repo
 
     if [ "$PREP_MODE" = "true" ]; then
         run_setup
+        download_kernel_source
         log "========================================"
         log "  ✅ Prep Complete!"
         log "========================================"
@@ -136,32 +137,26 @@ run_setup() {
 download_kernel_source() {
     echo "::group::📥 Kernel Source"
 
-    if [ "${USE_KERNEL_CACHE:-false}" = "true" ] && [ -d "${HOME}/kernel-cache/arch" ]; then
+    if [ "${USE_KERNEL_CACHE:-false}" = "true" ] && [ -d "${HOME}/kernel-cache/common" ]; then
         log "Restoring kernel source from cache..."
-        mkdir -p "${KERNEL_SRC}"
-        cp -a "${HOME}/kernel-cache/." "${KERNEL_SRC}/"
+        cp -a "${HOME}/kernel-cache/." "${KERNEL_DIR}/"
         log "Kernel source restored ✅"
     else
-        log "Downloading manifest for ${KERNEL_BRANCH}..."
-        mkdir -p "${WORK_DIR}"
-        git clone -q --depth=1 \
-            -b "${KERNEL_BRANCH}" \
-            https://android.googlesource.com/kernel/manifest \
-            /tmp/kernel-manifest \
-            || error "Failed to clone manifest repo!"
-        cp /tmp/kernel-manifest/default.xml "${WORK_DIR}/manifest.xml" \
-            || error "default.xml not found in manifest repo!"
-        rm -rf /tmp/kernel-manifest
+        log "Fetching manifest for ${KERNEL_BRANCH}..."
+        cd "$KERNEL_DIR"
 
-        log "Syncing kernel source via fast_parallel_download..."
-        cd "${WORK_DIR}"
+        MANIFEST_URL="https://android.googlesource.com/kernel/manifest/+/refs/heads/common-${KERNEL_BRANCH}/default.xml?format=TEXT"
+        curl -fsSL "$MANIFEST_URL" | base64 -d > manifest.xml \
+            || error "Failed to fetch manifest!"
+
+        log "Downloading kernel source (parallel)..."
         python3 "${ROOT_DIR}/fast_parallel_download.py" \
-            || error "fast_parallel_download failed!"
-        cd "${ROOT_DIR}"
+            || error "Kernel source download failed!"
 
-        log "Saving kernel source to cache..."
+        log "Saving to cache..."
         mkdir -p "${HOME}/kernel-cache"
-        rsync -a --exclude='.git' "${KERNEL_SRC}/" "${HOME}/kernel-cache/"
+        rsync -a "${KERNEL_DIR}/" "${HOME}/kernel-cache/"
+        cd "$ROOT_DIR"
     fi
 
     SUBLEVEL="$(grep '^SUBLEVEL = ' "${KERNEL_SRC}/Makefile" | awk '{print $3}')"
