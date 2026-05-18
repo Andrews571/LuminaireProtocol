@@ -61,7 +61,7 @@ jobs:
 
       - name: "📤 Upload AnyKernel3"
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: LuminaireProtocol-AnyKernel3
           path: /tmp/LuminaireProtocol-*.zip
