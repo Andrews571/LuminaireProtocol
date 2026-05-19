@@ -53,6 +53,23 @@ ZIP_NAME="LuminaireProtocol-${DATE}R${GITHUB_RUN_NUMBER:-0}.zip"
 LOG_FILE="/tmp/luminaire-$(date +%s).log"
 touch "$LOG_FILE"
 
+
+export KBUILD_BUILD_USER="$BUILD_USER"
+export KBUILD_BUILD_HOST="$BUILD_HOST"
+export KBUILD_BUILD_TIMESTAMP="$(date)"
+export KCFLAGS="-w"
+
+MAKE_ARGS=(
+    -C "$KERNEL_SRC"
+    O="$OUT_DIR"
+    ARCH="$ARCH"
+    CROSS_COMPILE=aarch64-linux-gnu-
+    CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+    LLVM=1
+    LLVM_IAS=1
+    LOCALVERSION="-${KERNEL_NAME}"
+    -j"$(nproc --all)"
+)
 # ======================================================
 # 🚀 MAIN
 # ======================================================
@@ -207,22 +224,6 @@ run_fixes() {
 # ======================================================
 
 run_patches() {
-    export KBUILD_BUILD_USER="$BUILD_USER"
-    export KBUILD_BUILD_HOST="$BUILD_HOST"
-    export KBUILD_BUILD_TIMESTAMP="$(date)"
-    export KCFLAGS="-w"
-
-    MAKE_ARGS=(
-        -C "$KERNEL_SRC"
-        O="$OUT_DIR"
-        ARCH="$ARCH"
-        CROSS_COMPILE=aarch64-linux-gnu-
-        CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
-        LLVM=1
-        LLVM_IAS=1
-        LOCALVERSION="-${KERNEL_NAME}"
-        -j"$(nproc --all)"
-    )
 
     touch "${KERNEL_SRC}/.scmversion"
 
