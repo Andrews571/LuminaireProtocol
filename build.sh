@@ -15,6 +15,7 @@ source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 ANDROID_VERSION="android14"
 KERNEL_VERSION="6.1"
 KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
+KMI_GENERATION="11"
 
 KERNEL_NAME="Luminaire"
 BUILD_USER="chainonyourdoor"
@@ -57,6 +58,8 @@ MAKE_ARGS=(
     CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
     LLVM=1
     LLVM_IAS=1
+    BRANCH="${KERNEL_BRANCH}"
+    KMI_GENERATION="${KMI_GENERATION}"
     LOCALVERSION="-${KERNEL_NAME}"
     -j"$(nproc --all)"
 )
