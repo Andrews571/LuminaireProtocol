@@ -255,7 +255,9 @@ build_kernel() {
 
     echo "::group::🔍 Ccache Miss Log"
     if [ -f "/tmp/ccache.log" ]; then
-        grep -B5 "Result: cache_miss" /tmp/ccache.log | grep -E "\.c$|\.cpp$|\.S$" | sort | uniq || true
+        grep -A5 "Result: cache_miss" /tmp/ccache.log | grep -i "input\|file\|source\|\.c\b\|\.cpp\b\|\.S\b" | sort | uniq || true
+        echo "--- raw sample ---"
+        head -20 /tmp/ccache.log || true
     fi
     echo "::endgroup::"
 }
