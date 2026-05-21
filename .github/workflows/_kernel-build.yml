@@ -1,4 +1,4 @@
-name: "🔧 Kernel Build"
+name: "Kernel Build"
 
 on:
   workflow_call:
@@ -36,7 +36,7 @@ jobs:
   # 🧰 PREPARATION
   # ======================================================
   prep:
-    name: "🧰 Arsenal Preparation"
+    name: "Arsenal Preparation"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -99,7 +99,7 @@ jobs:
   # 🏗️ BUILD
   # ======================================================
   build:
-    name: "✨ Build — ${{ inputs.variant }}"
+    name: "${{ inputs.variant }}"
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: prep
@@ -121,26 +121,28 @@ jobs:
       WARMING_MODE:             ${{ inputs.warming_mode }}
 
     steps:
-      - name: "🌀 Clone LuminaireProtocol"
+      - name: "Clone LuminaireProtocol"
         run: |
           git clone --filter=blob:none \
             "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
 
-      - name: "🔌 Setup Swap Space"
+      - name: "Setup Swap Space"
         uses: thejerrybao/setup-swap-space@v1
         with:
           swap-size-gb: 12
 
-      - uses: ./.github/actions/restore-caches
+      - name: "Restore Cache"
+        uses: ./.github/actions/restore-caches
         with:
           arsenal-key: arsenal-${{ github.ref_name }}-${{ github.run_id }}
           ccache-key: ccache-data-${{ inputs.variant }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-${{ github.run_id }}
           ccache-restore-keys: ccache-data-${{ inputs.variant }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-
 
-      - name: "✨ Build"
+      - name: "Build"
         run: bash build.sh
 
-      - uses: ./.github/actions/save-caches
+      - name: "Save Cache"
+        uses: ./.github/actions/save-caches
         if: always()
         with:
           ccache-key: ccache-data-${{ inputs.variant }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-${{ github.run_id }}
