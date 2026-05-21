@@ -255,7 +255,9 @@ build_kernel() {
 
     echo "::group::🔍 Ccache Miss Log"
     if [ -f "/tmp/ccache.log" ]; then
-        grep -B20 "Result: cache_miss" /tmp/ccache.log | head -80 || true
+        grep "Result: cache_miss" /tmp/ccache.log | grep -oE '\b[0-9]{4,}\b' | while read pid; do
+            grep "\b${pid}\b" /tmp/ccache.log | grep -E "Source file:|Detected input file:" | head -1
+        done | sort | uniq || true
     fi
     echo "::endgroup::"
 }
