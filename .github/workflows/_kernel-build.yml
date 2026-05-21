@@ -33,10 +33,10 @@ env:
 jobs:
 
   # ======================================================
-  # 📦 PREP
+  # 🧰 PREPARATION
   # ======================================================
   prep:
-    name: "📦 Prep Arsenal"
+    name: "🧰 Arsenal Preparation"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -53,7 +53,7 @@ jobs:
           git clone --filter=blob:none \
             "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
 
-      - name: "♻️ Restore arsenal"
+      - name: "♻️ Restore Arsenal"
         if: inputs.update_arsenal != 'yes'
         uses: actions/cache/restore@v5
         with:
@@ -66,7 +66,7 @@ jobs:
           key: arsenal-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: arsenal-${{ github.ref_name }}-
 
-      - name: "📦 Run Prep"
+      - name: "🚀 Run Preparation"
         run: bash build.sh
 
       - name: "💾 Save arsenal"
@@ -81,7 +81,7 @@ jobs:
             ~/.apt-cache
           key: arsenal-${{ github.ref_name }}-${{ github.run_id }}
 
-      - name: "🧹 Cleanup old arsenal"
+      - name: "🧹 Cleanup Old Arsenal"
         if: always()
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
