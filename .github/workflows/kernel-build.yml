@@ -131,7 +131,7 @@ jobs:
         with:
           swap-size-gb: 12
 
-      - name: "Restore Cache"
+      - name: "Restore ${{ inputs.variant }} Cache"
         uses: ./.github/actions/restore-caches
         with:
           arsenal-key: arsenal-${{ github.ref_name }}-${{ github.run_id }}
@@ -141,7 +141,7 @@ jobs:
       - name: "Build"
         run: bash build.sh
 
-      - name: "Save Cache"
+      - name: "Save ${{ inputs.variant }} Cache"
         uses: ./.github/actions/save-caches
         if: always()
         with:
