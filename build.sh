@@ -253,15 +253,6 @@ build_kernel() {
     echo "::group::📊 Ccache Stats"
     [ -f "$CCACHE_BIN" ] && $CCACHE_BIN --show-stats 2>/dev/null || true
     echo "::endgroup::"
-
-    echo "::group::🔍 Ccache Miss Log"
-    if [ -f "/tmp/ccache.log" ]; then
-        grep "Result: cache_miss" /tmp/ccache.log | grep -oE '\b[0-9]{4,}\b' | while read pid; do
-            echo "=== PID $pid ==="
-            grep "\b${pid}\b" /tmp/ccache.log | sed 's/.*] //'
-        done || true
-    fi
-    echo "::endgroup::"
 }
 
 # ======================================================
