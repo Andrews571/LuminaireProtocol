@@ -137,6 +137,7 @@ jobs:
           arsenal-key: arsenal-${{ github.ref_name }}-${{ github.run_id }}
           ccache-key: ccache-data-${{ inputs.variant }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-${{ github.run_id }}
           ccache-restore-keys: ccache-data-${{ inputs.variant }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-
+          gh-token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Build"
         run: bash build.sh

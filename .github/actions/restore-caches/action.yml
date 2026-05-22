@@ -1,5 +1,5 @@
 name: "Restore Caches"
-description: "Restore arsenal and ccache"
+description: "Restore arsenal from GH Cache, ccache from Release"
 
 inputs:
   arsenal-key:
@@ -7,6 +7,8 @@ inputs:
   ccache-key:
     required: true
   ccache-restore-keys:
+    required: true
+  gh-token:
     required: true
 
 runs:
@@ -24,9 +26,18 @@ runs:
         key: ${{ inputs.arsenal-key }}
         restore-keys: arsenal-${{ github.ref_name }}-
 
-    - name: "♻️ Restore ccache"
-      uses: actions/cache/restore@v5
-      with:
-        path: ${{ github.workspace }}/.ccache
-        key: ${{ inputs.ccache-key }}
-        restore-keys: ${{ inputs.ccache-restore-keys }}
+    - name: "♻️ Restore ccache from Release"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+      run: |
+        ASSET_NAME="${{ inputs.ccache-restore-keys }}ccache.tar.zst"
+        cd "${{ github.workspace }}"
+        gh release download cache \
+          --repo "${{ github.repository }}" \
+          --pattern "${ASSET_NAME}" \
+          --dir /tmp/ 2>/dev/null || true
+        if [ -f "/tmp/${ASSET_NAME}" ]; then
+          tar --zstd -xf "/tmp/${ASSET_NAME}"
+          rm -f "/tmp/${ASSET_NAME}"
+        fi

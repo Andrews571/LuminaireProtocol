@@ -1,5 +1,5 @@
 name: "Save Caches"
-description: "Save ccache and cleanup old caches"
+description: "Save arsenal to GH Cache, ccache to Release"
 
 inputs:
   ccache-key:
@@ -12,22 +12,27 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: "💾 Save ccache"
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ github.workspace }}/.ccache
-        key: ${{ inputs.ccache-key }}
-
-    - name: "🧹 Cleanup old caches"
+    - name: "💾 Save ccache to Release"
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.gh-token }}
       run: |
-        CURRENT="${{ inputs.ccache-key }}"
-        PREFIX="${{ inputs.ccache-prefix }}"
+        ASSET_NAME="${{ inputs.ccache-prefix }}ccache.tar.zst"
+        cd "${{ github.workspace }}"
+        tar --zstd -cf "/tmp/${ASSET_NAME}" .ccache/
+        gh release upload cache "/tmp/${ASSET_NAME}" \
+          --repo "${{ github.repository }}" \
+          --clobber
+        rm -f "/tmp/${ASSET_NAME}"
+
+    - name: "🧹 Arsenal cleanup old caches"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+      run: |
         CACHES=$(gh api \
           "/repos/${{ github.repository }}/actions/caches?per_page=100" \
-          --jq ".actions_caches[] | select(.key | startswith(\"${PREFIX}\")) | select(.key != \"${CURRENT}\") | .id")
+          --jq ".actions_caches[] | select(.key | startswith(\"arsenal-${{ github.ref_name }}-\")) | select(.key != \"${{ inputs.ccache-prefix }}arsenal\") | .id")
         if [ -n "$CACHES" ]; then
           for ID in $CACHES; do
             gh api --method DELETE "/repos/${{ github.repository }}/actions/caches/${ID}" || true
