@@ -38,6 +38,7 @@ KERNEL_SRC="${KERNEL_DIR}/common"
 AK3_DIR="${WORK_DIR}/AnyKernel3"
 OUT_DIR="${WORK_DIR}/out"
 PATCH_REPO="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
+COMMON_REPO="${ROOT_DIR}/Luminaire-Patch/common"
 
 CCACHE_BIN="${ROOT_DIR}/ccache-bin/ccache"
 CCACHE_WRAPPER_DIR="${ROOT_DIR}/ccache-wrappers"
@@ -136,7 +137,7 @@ clone_patch_repo() {
 
 run_setup() {
     echo "::group::📦 Setup"
-    for script in "${PATCH_REPO}/setup/"*.sh; do
+    for script in "${COMMON_REPO}/setup/"*.sh; do
         log "Running: $(basename "$script")..."
         source "$script" || error "Setup failed: $(basename "$script")"
     done
@@ -175,7 +176,7 @@ download_kernel_source() {
 
 run_fixes() {
     echo "::group::🔧 Fixes"
-    for fix in "${PATCH_REPO}/fixes/"*.sh; do
+    for fix in "${COMMON_REPO}/fixes/"*.sh; do
         log "Applying: $(basename "$fix")..."
         source "$fix" || error "Fix failed: $(basename "$fix")"
     done
@@ -209,7 +210,7 @@ run_patches() {
     make "${MAKE_ARGS[@]}" "$DEFCONFIG" || error "Defconfig failed!"
 
     log "Applying Luminaire configs..."
-    source "${PATCH_REPO}/luminaire_defconfig.sh"
+    source "${COMMON_REPO}/luminaire_defconfig.sh"
 
     log "Syncing config..."
     make "${MAKE_ARGS[@]}" olddefconfig || error "olddefconfig failed!"
