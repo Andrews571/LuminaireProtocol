@@ -48,6 +48,7 @@ VERSION_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSI
 COMMON_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/common"
 
 CCACHE_BIN="${ROOT_DIR}/ccache-bin/ccache"
+CCACHE_WRAPPER_DIR="${ROOT_DIR}/ccache-wrappers"
 export CCACHE_DIR="${CCACHE_DIR:-${ROOT_DIR}/.ccache}"
 export CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-5G}"
 export CCACHE_COMPRESS=1
@@ -121,10 +122,14 @@ main() {
 
 clone_patch_repo() {
     echo "::group::🔑 Luminaire-Patch"
-    log "Cloning Luminaire-Patch..."
-    git clone --depth=1 \
-        https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/Luminaire-Patch.git \
-        "${ROOT_DIR}/Luminaire-Patch"
+    if [ -d "${ROOT_DIR}/Luminaire-Patch/.git" ]; then
+        log "Luminaire-Patch already exists, skipping clone."
+    else
+        log "Cloning Luminaire-Patch..."
+        git clone --depth=1 \
+            https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/Luminaire-Patch.git \
+            "${ROOT_DIR}/Luminaire-Patch"
+    fi
     echo "::endgroup::"
 }
 
