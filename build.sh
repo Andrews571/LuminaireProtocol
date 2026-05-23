@@ -75,7 +75,7 @@ MAKE_ARGS=(
 )
 
 DATE=$(date +"%b%d")
-ZIP_NAME="LuminaireAnykernel3-${DATE}R${GITHUB_RUN_NUMBER:-0}.zip"
+ZIP_NAME="LuminaireAk3-placeholder.zip"
 
 # ======================================================
 # 🚀 MAIN
@@ -112,10 +112,11 @@ main() {
     fi
 
     package_anykernel3
+    send_zip
 
     echo ""
     log "========================================"
-    log "  ✅ Build Complete! — ${ZIP_NAME}"
+    log "  Build Complete! — ${ZIP_NAME}"
     log "========================================"
     echo ""
 }
@@ -169,6 +170,8 @@ download_kernel_source() {
     SUBLEVEL="$(grep '^SUBLEVEL = ' "${KERNEL_SRC}/Makefile" | awk '{print $3}')"
     KMI_GENERATION="$(grep '^KMI_GENERATION=' "${KERNEL_SRC}/build.config.common" "${KERNEL_SRC}/build.config.constants" 2>/dev/null | head -1 | cut -d= -f2)"
     [ -z "$KMI_GENERATION" ] && error "KMI_GENERATION not found in kernel source!"
+    ZIP_NAME="LuminaireAk3-${KERNEL_VERSION}.${SUBLEVEL}-R${GITHUB_RUN_NUMBER:-0}.zip"
+    export ZIP_NAME
     log "Kernel source ready ✅ (sublevel: ${SUBLEVEL}, KMI: ${KMI_GENERATION})"
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
     echo "::endgroup::"
@@ -300,6 +303,27 @@ package_anykernel3() {
     echo "ZIP_NAME=${ZIP_NAME}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
     echo "ZIP_PATH=${ZIP_PATH}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
     echo "::endgroup::"
+}
+
+# ======================================================
+# 📲 TELEGRAM
+# ======================================================
+
+send_zip() {
+    [ -z "${TELEGRAM_BOT_TOKEN:-}" ] && return
+    [ -z "${TELEGRAM_CHAT_ID:-}" ] && return
+    [ ! -f "${ZIP_PATH:-}" ] && return
+
+    LINUX_VER="${KERNEL_VERSION}.${SUBLEVEL}-${ANDROID_VERSION}-${KMI_GENERATION}"
+    CAPTION="Luminaire — ${VARIANT}
+Linux    : ${LINUX_VER}
+Compiler : ${COMPILER_STRING:-N/A}
+Date     : $(date +'%d %b %Y')"
+
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+        -F "chat_id=${TELEGRAM_CHAT_ID}" \
+        -F "document=@${ZIP_PATH};filename=${ZIP_NAME}" \
+        -F "caption=${CAPTION}" > /dev/null || true
 }
 
 # ======================================================
