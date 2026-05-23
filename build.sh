@@ -27,19 +27,16 @@ KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
 DEFCONFIG="gki_defconfig"
 ARCH="arm64"
+KERNEL_NAME="Luminaire"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE_DIR="${ROOT_DIR}/workspace"
-CLANG_DIR="${ROOT_DIR}/greenforce-clang"
 KERNEL_DIR="${WORKSPACE_DIR}/kernel"
 KERNEL_SRC="${KERNEL_DIR}/common"
 ANYKERNEL_DIR="${WORKSPACE_DIR}/AnyKernel3"
 OUT_DIR="${WORKSPACE_DIR}/out"
 VERSION_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 COMMON_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/common"
-
-CCACHE_BIN="${ROOT_DIR}/ccache-bin/ccache"
-CCACHE_WRAPPER_DIR="${ROOT_DIR}/ccache-wrappers"
 
 export GIT_CLONE_PROTECTION_ACTIVE=false
 export KCFLAGS="-w"
@@ -62,11 +59,6 @@ main() {
 
     clone_patch_repo
 
-    # Load branding config (KERNEL_NAME, BUILD_USER, BUILD_HOST)
-    source "${COMMON_PATCH_DIR}/fixes/branding.sh"
-    export KBUILD_BUILD_USER="$BUILD_USER"
-    export KBUILD_BUILD_HOST="$BUILD_HOST"
-
     MAKE_ARGS=(
         -C "$KERNEL_SRC"
         O="$OUT_DIR"
@@ -88,6 +80,7 @@ main() {
         exit 0
     fi
 
+    run_branding
     run_fixes
     run_patches
     build_kernel
@@ -165,6 +158,17 @@ download_kernel_source() {
     export ZIP_NAME
     log "Kernel source ready ✅ (sublevel: ${SUBLEVEL}, KMI: ${KMI_GENERATION})"
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
+    echo "::endgroup::"
+}
+
+# ======================================================
+# 🏷️ BRANDING
+# ======================================================
+
+run_branding() {
+    echo "::group::🏷️ Branding"
+    source "${COMMON_PATCH_DIR}/branding/branding.sh" || error "Branding failed!"
+    log "Branding applied ✅"
     echo "::endgroup::"
 }
 
