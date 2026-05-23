@@ -12,18 +12,18 @@ source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 # ⚙️ CONFIGURATION
 # ======================================================
 
-ANDROID_VERSION="${ANDROID_VERSION:-android14}"
 KERNEL_VERSION="${KERNEL_VERSION:-6.1}"
-KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
-case "${ANDROID_VERSION}-${KERNEL_VERSION}" in
-  "android13-5.10") KMI_GENERATION="9"  ;;
-  "android13-5.15") KMI_GENERATION="10" ;;
-  "android14-6.1")  KMI_GENERATION="11" ;;
-  "android15-6.6")  KMI_GENERATION="20" ;;
-  "android16-6.12") KMI_GENERATION="0"  ;;
-  *) error "Unknown kernel version: ${ANDROID_VERSION}-${KERNEL_VERSION}" ;;
+case "${KERNEL_VERSION}" in
+  "5.10") ANDROID_VERSION="android13" ;;
+  "5.15") ANDROID_VERSION="android13" ;;
+  "6.1")  ANDROID_VERSION="android14" ;;
+  "6.6")  ANDROID_VERSION="android15" ;;
+  "6.12") ANDROID_VERSION="android16" ;;
+  *) error "Unknown kernel version: ${KERNEL_VERSION}" ;;
 esac
+
+KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
 KERNEL_NAME="Luminaire"
 BUILD_USER="chainonyourdoor"
@@ -173,7 +173,9 @@ download_kernel_source() {
         rsync -a "${KERNEL_DIR}/" "${HOME}/kernel-cache/"
     fi
     SUBLEVEL="$(grep '^SUBLEVEL = ' "${KERNEL_SRC}/Makefile" | awk '{print $3}')"
-    log "Kernel source ready ✅ (sublevel: ${SUBLEVEL})"
+    KMI_GENERATION="$(grep '^KMI_GENERATION=' "${KERNEL_SRC}/build.config.common" "${KERNEL_SRC}/build.config.constants" 2>/dev/null | head -1 | cut -d= -f2)"
+    [ -z "$KMI_GENERATION" ] && error "KMI_GENERATION not found in kernel source!"
+    log "Kernel source ready ✅ (sublevel: ${SUBLEVEL}, KMI: ${KMI_GENERATION})"
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
     echo "::endgroup::"
 }

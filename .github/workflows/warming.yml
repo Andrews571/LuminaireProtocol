@@ -9,15 +9,6 @@ on:
         default: "VANILLA"
         options:
           - "VANILLA"
-      android_version:
-        description: "Android Version"
-        type: choice
-        default: "android14"
-        options:
-          - "android13"
-          - "android14"
-          - "android15"
-          - "android16"
       kernel_version:
         description: "Kernel Version"
         type: choice
@@ -48,7 +39,6 @@ jobs:
     uses: ./.github/workflows/kernel-build.yml
     with:
       variant:         ${{ inputs.variant }}
-      android_version: ${{ inputs.android_version }}
       kernel_version:  ${{ inputs.kernel_version }}
       update_arsenal:  ${{ inputs.update_arsenal }}
       enable_lto:      ${{ inputs.enable_lto }}

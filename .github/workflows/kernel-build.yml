@@ -6,9 +6,6 @@ on:
       variant:
         type: string
         default: "VANILLA"
-      android_version:
-        type: string
-        default: "android14"
       kernel_version:
         type: string
         default: "6.1"
@@ -123,7 +120,6 @@ jobs:
       CCACHE_DIR:               ${{ github.workspace }}/.ccache
       CCACHE_MAXSIZE:           "5G"
       VARIANT:                  ${{ inputs.variant }}
-      ANDROID_VERSION:          ${{ inputs.android_version }}
       KERNEL_VERSION:           ${{ inputs.kernel_version }}
       ENABLE_LTO:               ${{ inputs.enable_lto }}
       WARMING_MODE:             ${{ inputs.warming_mode }}
