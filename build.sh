@@ -25,10 +25,6 @@ esac
 
 KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
-KERNEL_NAME="Luminaire"
-BUILD_USER="chainonyourdoor"
-BUILD_HOST="LuminaireCI"
-
 DEFCONFIG="gki_defconfig"
 ARCH="arm64"
 
@@ -55,22 +51,7 @@ export CCACHE_COMPRESS=1
 export CCACHE_COMPRESSLEVEL=1
 
 export GIT_CLONE_PROTECTION_ACTIVE=false
-export KBUILD_BUILD_USER="$BUILD_USER"
-export KBUILD_BUILD_HOST="$BUILD_HOST"
 export KCFLAGS="-w"
-
-MAKE_ARGS=(
-    -C "$KERNEL_SRC"
-    O="$OUT_DIR"
-    ARCH="$ARCH"
-    CROSS_COMPILE=aarch64-linux-gnu-
-    CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
-    LLVM=1
-    LLVM_IAS=1
-    BRANCH="${KERNEL_BRANCH}"
-    LOCALVERSION="-${KERNEL_NAME}"
-    -j"$(nproc --all)"
-)
 
 # ======================================================
 # 🚀 MAIN
@@ -89,6 +70,25 @@ main() {
     mkdir -p "$KERNEL_DIR" "$OUT_DIR"
 
     clone_patch_repo
+
+    # Load branding config (KERNEL_NAME, BUILD_USER, BUILD_HOST)
+    source "${COMMON_PATCH_DIR}/fixes/branding.sh"
+    export KBUILD_BUILD_USER="$BUILD_USER"
+    export KBUILD_BUILD_HOST="$BUILD_HOST"
+
+    MAKE_ARGS=(
+        -C "$KERNEL_SRC"
+        O="$OUT_DIR"
+        ARCH="$ARCH"
+        CROSS_COMPILE=aarch64-linux-gnu-
+        CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+        LLVM=1
+        LLVM_IAS=1
+        BRANCH="${KERNEL_BRANCH}"
+        LOCALVERSION="-${KERNEL_NAME}"
+        -j"$(nproc --all)"
+    )
+
     run_setup
     download_kernel_source
 
