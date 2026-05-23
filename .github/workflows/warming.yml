@@ -29,7 +29,7 @@ on:
       enable_lto:
         description: "⚠️ LTO"
         type: choice
-        default: "THIN"
+        default: "NONE"
         options:
           - "NONE"
           - "THIN"
