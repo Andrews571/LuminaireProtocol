@@ -296,6 +296,8 @@ package_anykernel3() {
     cp "$KERNEL_IMG" "${AK3_DIR}/"
 
     ZIP_PATH="/tmp/${ZIP_NAME}"
+    export ZIP_PATH
+    export ZIP_NAME
     cd "$AK3_DIR"
     zip -r9 "$ZIP_PATH" . -x "*.git*" -x "*.github*" -x "*.md" -x "LICENSE"
     cd "$ROOT_DIR"
