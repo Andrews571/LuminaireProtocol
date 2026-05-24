@@ -195,8 +195,6 @@ setup_make_args() {
         BRANCH="${KERNEL_BRANCH}"
         KMI_GENERATION="${KMI_GENERATION}"
         LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}"
-        KBUILD_BUILD_USER="${BUILD_USER}"
-        KBUILD_BUILD_HOST="${BUILD_HOST}"
         -j"$(nproc --all)"
     )
 }
