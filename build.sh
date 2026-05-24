@@ -193,7 +193,9 @@ setup_make_args() {
         LLVM_IAS=1
         BRANCH="${KERNEL_BRANCH}"
         KMI_GENERATION="${KMI_GENERATION}"
-        LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}"
+        LOCALVERSION="${LOCALVERSION}"
+        KBUILD_BUILD_USER="${KBUILD_BUILD_USER}"
+        KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST}"
         -j"$(nproc --all)"
     )
 }
@@ -257,9 +259,7 @@ build_kernel_kleaf() {
     KLEAF_ARGS=(
         --config=fast
         --lto="${ENABLE_LTO,,}"
-        --action_env=KBUILD_BUILD_USER="${BUILD_USER}"
-        --action_env=KBUILD_BUILD_HOST="${BUILD_HOST}"
-        --action_env=LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}"
+        "${BRANDING_KLEAF_ARGS[@]}"
     )
 
     (
