@@ -57,11 +57,13 @@ main() {
         LLVM=1
         LLVM_IAS=1
         BRANCH="${KERNEL_BRANCH}"
-        LOCALVERSION="-${KERNEL_NAME}"
         -j"$(nproc --all)"
     )
 
     download_kernel_source
+
+    # LOCALVERSION needs KMI_GENERATION from download_kernel_source
+    MAKE_ARGS+=(LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}")
 
     if [ "$PREPARE_ARSENAL" = "true" ]; then
         log "✅ Prep Complete!"
