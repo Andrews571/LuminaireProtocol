@@ -205,10 +205,8 @@ setup_make_args() {
 run_fixes() {
     echo "::group::🔧 Fixes"
     for fix in "${LUMINAIRE_PATCH_DIR}/fixes/"*.sh; do
-        log "Applying: $(basename "$fix")..."
         source "$fix" || error "Fix failed: $(basename "$fix")"
     done
-    log "All fixes applied ✅"
     echo "::endgroup::"
 }
 
@@ -328,7 +326,6 @@ build_kernel() {
 run_release() {
     echo "::group::🚀 Release"
     for script in "${LUMINAIRE_PATCH_DIR}/release/"*.sh; do
-        log "Running: $(basename "$script")..."
         source "$script" || error "Release failed: $(basename "$script")"
     done
     echo "::endgroup::"
