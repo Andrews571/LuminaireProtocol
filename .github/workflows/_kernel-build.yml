@@ -152,7 +152,7 @@ jobs:
         run: bash build.sh
 
       - name: "📊 Ccache Stats"
-        if: always()
+        if: always() && inputs.build_system != 'KLEAF'
         run: ~/ccache-bin/ccache --show-stats
         
       - name: "Save ${{ inputs.variant }} Cache"
