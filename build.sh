@@ -26,7 +26,7 @@ esac
 KERNEL_BRANCH="${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-COMMON_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/common"
+LUMINAIRE_PATCH_DIR="${ROOT_DIR}/Luminaire-Patch/common"
 
 # ======================================================
 # 🚀 MAIN
@@ -112,7 +112,7 @@ clone_patch_repo() {
 
 run_setup() {
     echo "::group::📦 Setup"
-    for script in "${COMMON_PATCH_DIR}/setup/"*.sh; do
+    for script in "${LUMINAIRE_PATCH_DIR}/setup/"*.sh; do
         log "Running: $(basename "$script")..."
         source "$script" || error "Setup failed: $(basename "$script")"
     done
@@ -155,7 +155,7 @@ download_kernel_source() {
 # ======================================================
 
 load_branding() {
-    source "${COMMON_PATCH_DIR}/branding/branding.sh"
+    source "${LUMINAIRE_PATCH_DIR}/branding/branding.sh"
 }
 
 # ======================================================
@@ -164,7 +164,7 @@ load_branding() {
 
 run_branding() {
     echo "::group::🏷️ Branding"
-    source "${COMMON_PATCH_DIR}/branding/branding.sh" || error "Branding failed!"
+    source "${LUMINAIRE_PATCH_DIR}/branding/branding.sh" || error "Branding failed!"
     log "Branding applied ✅"
     echo "::endgroup::"
 }
@@ -175,7 +175,7 @@ run_branding() {
 
 run_fixes() {
     echo "::group::🔧 Fixes"
-    for fix in "${COMMON_PATCH_DIR}/fixes/"*.sh; do
+    for fix in "${LUMINAIRE_PATCH_DIR}/fixes/"*.sh; do
         log "Applying: $(basename "$fix")..."
         source "$fix" || error "Fix failed: $(basename "$fix")"
     done
@@ -209,7 +209,7 @@ run_patches() {
     make "${MAKE_ARGS[@]}" "$DEFCONFIG" || error "Defconfig failed!"
 
     log "Applying Luminaire configs..."
-    source "${COMMON_PATCH_DIR}/luminaire_defconfig.sh"
+    source "${LUMINAIRE_PATCH_DIR}/luminaire_defconfig.sh"
 
     log "Syncing config..."
     make "${MAKE_ARGS[@]}" olddefconfig || error "olddefconfig failed!"
@@ -260,7 +260,7 @@ build_kernel() {
 
 run_release() {
     echo "::group::🎁 Release"
-    for script in "${COMMON_PATCH_DIR}/release/"*.sh; do
+    for script in "${LUMINAIRE_PATCH_DIR}/release/"*.sh; do
         log "Running: $(basename "$script")..."
         source "$script" || error "Release failed: $(basename "$script")"
     done
