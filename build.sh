@@ -253,7 +253,7 @@ build_kernel() {
 # ======================================================
 
 run_release() {
-    echo "::group::🎁 Release"
+    echo "::group::🚀 Release"
     for script in "${LUMINAIRE_PATCH_DIR}/release/"*.sh; do
         log "Running: $(basename "$script")..."
         source "$script" || error "Release failed: $(basename "$script")"
