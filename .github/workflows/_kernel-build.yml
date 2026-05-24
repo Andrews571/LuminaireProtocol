@@ -48,11 +48,12 @@ jobs:
 
     env:
       PERSONAL_TOKEN:   ${{ secrets.PERSONAL_TOKEN }}
-      PREPARE_ARSENAL:        "true"
+      PREPARE_ARSENAL:  "true"
       USE_KERNEL_CACHE: ${{ inputs.update_arsenal != 'yes' }}
       USE_AK3_CACHE:    ${{ inputs.update_arsenal != 'yes' }}
       KERNEL_VERSION:   ${{ inputs.kernel_version }}
       VARIANT:          ${{ inputs.variant }}
+      BUILD_SYSTEM:     ${{ inputs.build_system }}
 
     steps:
       - name: "Clone LuminaireProtocol"
