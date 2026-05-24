@@ -145,40 +145,10 @@ jobs:
 
       - name: "Build"
         run: bash build.sh
-        
+
       - name: "📊 Ccache Stats"
         if: always()
         run: ~/ccache-bin/ccache --show-stats
-
-      - name: "📋 Send Log to Logbook"
-        if: always()
-        env:
-          GH_TOKEN:           ${{ secrets.PERSONAL_TOKEN }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
-        run: |
-          [ -z "${TELEGRAM_BOT_TOKEN}" ] && exit 0
-          [ -z "${TELEGRAM_CHAT_ID}" ] && exit 0
-          [ -z "${TELEGRAM_THREAD_ID}" ] && exit 0
-
-          RUN_ID="${{ github.run_id }}"
-          REPO="${{ github.repository }}"
-          LOG_FILE="/tmp/build-log-${RUN_ID}.zip"
-
-          gh api \
-            "repos/${REPO}/actions/runs/${RUN_ID}/logs" \
-            --header "Accept: application/vnd.github+json" \
-            > "${LOG_FILE}" 2>/dev/null || { echo "Failed to download logs"; exit 0; }
-
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-            -F "chat_id=${TELEGRAM_CHAT_ID}" \
-            -F "message_thread_id=${TELEGRAM_THREAD_ID}" \
-            -F "document=@${LOG_FILE};filename=build-log-R${{ github.run_number }}.zip" \
-            -F "caption=📋 Build Log — ${{ inputs.variant }} #${{ github.run_number }}" \
-            > /dev/null || true
-
-          rm -f "${LOG_FILE}"
         
       - name: "Save ${{ inputs.variant }} Cache"
         uses: ./.github/actions/save-caches
