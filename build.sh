@@ -55,20 +55,7 @@ main() {
     fi
 
     run_branding
-
-    MAKE_ARGS=(
-        -C "$KERNEL_SRC"
-        O="$OUT_DIR"
-        ARCH="$ARCH"
-        CROSS_COMPILE="$TOOL_CROSS_COMPILE"
-        CROSS_COMPILE_COMPAT="$TOOL_CROSS_COMPILE_COMPAT"
-        LLVM=1
-        LLVM_IAS=1
-        BRANCH="${KERNEL_BRANCH}"
-        KMI_GENERATION="${KMI_GENERATION}"
-        LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}"
-        -j"$(nproc --all)"
-    )
+    setup_make_args
 
     run_fixes
     run_patches
@@ -156,6 +143,26 @@ run_branding() {
     source "${LUMINAIRE_PATCH_DIR}/branding/branding.sh" || error "Branding failed!"
     log "Branding applied ✅"
     echo "::endgroup::"
+}
+
+# ======================================================
+# 🛠️ MAKE ARGS
+# ======================================================
+
+setup_make_args() {
+    MAKE_ARGS=(
+        -C "$KERNEL_SRC"
+        O="$OUT_DIR"
+        ARCH="$ARCH"
+        CROSS_COMPILE="$TOOL_CROSS_COMPILE"
+        CROSS_COMPILE_COMPAT="$TOOL_CROSS_COMPILE_COMPAT"
+        LLVM=1
+        LLVM_IAS=1
+        BRANCH="${KERNEL_BRANCH}"
+        KMI_GENERATION="${KMI_GENERATION}"
+        LOCALVERSION="-${ANDROID_VERSION}-${KMI_GENERATION}-${KERNEL_NAME}"
+        -j"$(nproc --all)"
+    )
 }
 
 # ======================================================
