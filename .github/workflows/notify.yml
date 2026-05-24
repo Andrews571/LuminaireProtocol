@@ -77,6 +77,9 @@ jobs:
           elif [ "$WF_STATUS" = "failure" ]; then
             ICON="❌"
             STATUS_TEXT="failure"
+          elif [ "$WF_STATUS" = "cancelled" ]; then
+            ICON="🚫"
+            STATUS_TEXT="cancelled"
           else
             ICON="🚀"
             STATUS_TEXT="started"
