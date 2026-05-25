@@ -49,7 +49,7 @@ jobs:
   # ======================================================
   prepare-matrix:
     name: "Prepare Arsenal"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set.outputs.matrix }}
 
@@ -66,7 +66,7 @@ jobs:
           git clone --filter=blob:none \
             "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
 
-      - name: "🧹 Free Disk Space"
+      - name: "Free Disk Space"
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -99,7 +99,6 @@ jobs:
             ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
-            ~/kernel-cache
             ~/.apt-cache
           key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
@@ -115,7 +114,6 @@ jobs:
             ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
-            ~/kernel-cache
             ~/.apt-cache
           key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
 
@@ -134,8 +132,8 @@ jobs:
           fi
   Start-Build:
     name: "Build Kernel"
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.build_system == 'KLEAF' && 90 || 60 }}
     needs: prepare-matrix
     strategy:
       matrix:
@@ -165,7 +163,7 @@ jobs:
           git clone --filter=blob:none \
             "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
 
-      - name: "🧹 Free Disk Space"
+      - name: "Free Disk Space"
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -195,11 +193,15 @@ jobs:
           restore-keys: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
 
       - name: "Restore ccache"
+        if: inputs.build_system != 'KLEAF'
         uses: ./.github/actions/restore-caches
         with:
           ccache-key: ccache-data-${{ inputs.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-${{ github.run_id }}
           ccache-restore-keys: ccache-data-${{ inputs.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-
           gh-token: ${{ secrets.PERSONAL_TOKEN }}
+
+      - name: "Disk Usage"
+        run: df -h && du -sh ~/kernel-cache/ 2>/dev/null || true
 
       - name: "Build"
         run: bash build.sh
@@ -209,14 +211,14 @@ jobs:
         run: ~/ccache-bin/ccache --show-stats
 
       - name: "Save ccache"
-        if: always()
+        if: always() && inputs.build_system != 'KLEAF'
         uses: ./.github/actions/save-caches
         with:
           ccache-key: ccache-data-${{ inputs.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-${{ github.run_id }}
           ccache-prefix: ccache-data-${{ inputs.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto == 'THIN' && 'lto-' || '' }}${{ github.ref_name }}-
           gh-token: ${{ secrets.PERSONAL_TOKEN }}
 
-      - name: "Upload Build"
+      - name: "Upload Build Info"
         if: always()
         uses: actions/upload-artifact@v7
         with:
