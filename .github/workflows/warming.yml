@@ -1,8 +1,16 @@
 name: "🔥 Cache Warming"
+run-name: "🔥 ${{ inputs.kernel_version }} | ${{ inputs.build_system }}"
 
 on:
   workflow_dispatch:
     inputs:
+      build_system:
+        description: "Build System"
+        type: choice
+        default: "MAKE"
+        options:
+          - "MAKE"
+          - "KLEAF"
       kernel_version:
         description: "Kernel Version"
         type: choice
@@ -13,12 +21,6 @@ on:
           - "6.1"
           - "6.6"
           - "6.12"
-      variant:
-        description: "Variant"
-        type: choice
-        default: "VANILLA"
-        options:
-          - "VANILLA"
       update_arsenal:
         description: "Refresh Arsenal"
         type: choice
@@ -38,14 +40,16 @@ jobs:
   Luminaire:
     uses: ./.github/workflows/_kernel-build.yml
     with:
-      variant:         ${{ inputs.variant }}
-      kernel_version:  ${{ inputs.kernel_version }}
-      update_arsenal:  ${{ inputs.update_arsenal }}
-      enable_lto:      ${{ inputs.enable_lto }}
-      warming_mode:    "true"
+      build_system:   ${{ inputs.build_system }}
+      variant:        "VANILLA"
+      vanilla:        true
+      kernel_version: ${{ inputs.kernel_version }}
+      update_arsenal: ${{ inputs.update_arsenal }}
+      enable_lto:     ${{ inputs.enable_lto }}
+      warming_mode:   "true"
     secrets:
-      PERSONAL_TOKEN:           ${{ secrets.PERSONAL_TOKEN }}
-      TELEGRAM_BOT_TOKEN:       ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID:         ${{ secrets.TELEGRAM_CHAT_ID }}
+      PERSONAL_TOKEN:              ${{ secrets.PERSONAL_TOKEN }}
+      TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
