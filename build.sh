@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ======================================================
-# ✨ LUMINAIRE PROTOCOL
-# GKI Kernel Build System
+# ✨ LUMINAIRE PROTOCOL — Build Orchestrator
 # ======================================================
 
 set -eo pipefail
@@ -47,7 +46,7 @@ main() {
 
     mkdir -p "$KERNEL_DIR" "$OUT_DIR"
 
-    download_kernel_source
+    run_download
 
     if [ "$PREPARE_ARSENAL" = "true" ]; then
         log "✅ Prep Complete!"
@@ -56,14 +55,7 @@ main() {
 
     run_branding
     run_fixes
-
-    if [ "$BUILD_SYSTEM" = "KLEAF" ]; then
-        build_kernel_kleaf
-    else
-        setup_make_args
-        run_patches
-        build_kernel
-    fi
+    run_build
 
     if [ "$WARMING_MODE" = "true" ]; then
         log "🔥 Warming Complete — skipping packaging"
@@ -107,64 +99,25 @@ run_setup() {
 }
 
 # ======================================================
-# 📥 KERNEL SOURCE
+# 📥 DOWNLOAD
 # ======================================================
 
-download_kernel_source() {
+run_download() {
     echo "::group::📥 Kernel Source"
-
     if [ "$BUILD_SYSTEM" = "KLEAF" ]; then
-        _download_kleaf
+        source "${LUMINAIRE_PATCH_DIR}/download/kleaf.sh"
     else
-        _download_make
+        source "${LUMINAIRE_PATCH_DIR}/download/make.sh"
     fi
-
     SUBLEVEL="$(grep '^SUBLEVEL = ' "${KERNEL_SRC}/Makefile" | awk '{print $3}')"
-    KMI_GENERATION="$(grep '^KMI_GENERATION=' "${KERNEL_SRC}/build.config.common" "${KERNEL_SRC}/build.config.constants" 2>/dev/null | head -1 | cut -d= -f2)"
-    [ -z "$KMI_GENERATION" ] && error "KMI_GENERATION not found in kernel source!"
+    KMI_GENERATION="$(grep '^KMI_GENERATION=' \
+        "${KERNEL_SRC}/build.config.common" \
+        "${KERNEL_SRC}/build.config.constants" 2>/dev/null | head -1 | cut -d= -f2)"
+    [ -z "$KMI_GENERATION" ] && error "KMI_GENERATION not found!"
     export SUBLEVEL KMI_GENERATION
-    log "Kernel source ready ✅ (sublevel: ${SUBLEVEL}, KMI: ${KMI_GENERATION})"
+    log "Kernel ready ✅ (sublevel: ${SUBLEVEL}, KMI: ${KMI_GENERATION})"
     echo "SUBLEVEL=${SUBLEVEL}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
     echo "::endgroup::"
-}
-
-_download_make() {
-    if [ "${USE_KERNEL_CACHE}" = "true" ] && [ -d "${HOME}/kernel-cache/common" ]; then
-        log "Restoring from cache..."
-        cp -a "${HOME}/kernel-cache/." "${KERNEL_DIR}/"
-        log "Kernel source restored ✅"
-    else
-        log "Cloning kernel source..."
-        git clone -q --depth=1 \
-            -b "$KERNEL_BRANCH" \
-            https://github.com/chainonyourdoor/android_kernel_common-${KERNEL_VERSION} \
-            "${KERNEL_DIR}/common" || error "Failed to clone kernel!"
-        log "Saving to cache..."
-        mkdir -p "${HOME}/kernel-cache"
-        rsync -a "${KERNEL_DIR}/" "${HOME}/kernel-cache/"
-    fi
-}
-
-_download_kleaf() {
-    if [ "${USE_KERNEL_CACHE}" = "true" ] && [ -f "${HOME}/kernel-cache/tools/bazel" ]; then
-        log "Restoring Kleaf workspace from cache..."
-        cp -a "${HOME}/kernel-cache/." "${KERNEL_DIR}/"
-        log "Kleaf workspace restored ✅"
-    else
-        log "Syncing kernel workspace via repo (Kleaf)..."
-        command -v repo &>/dev/null || \
-            curl -s https://storage.googleapis.com/git-repo-downloads/repo \
-                -o /usr/local/bin/repo && chmod +x /usr/local/bin/repo
-        mkdir -p "$KERNEL_DIR" && cd "$KERNEL_DIR"
-        repo init -u https://android.googlesource.com/kernel/manifest \
-            -b "${KLEAF_MANIFEST_BRANCH}" --depth=1 -q || error "repo init failed!"
-        repo sync -c -j"$(nproc --all)" --no-tags --no-clone-bundle -q \
-            || error "repo sync failed!"
-        cd "$ROOT_DIR"
-        log "Saving to cache..."
-        mkdir -p "${HOME}/kernel-cache"
-        rsync -a "${KERNEL_DIR}/" "${HOME}/kernel-cache/"
-    fi
 }
 
 # ======================================================
@@ -174,30 +127,7 @@ _download_kleaf() {
 run_branding() {
     echo "::group::🏷️ Branding"
     source "${LUMINAIRE_PATCH_DIR}/branding/branding.sh" || error "Branding failed!"
-    log "Branding applied ✅"
     echo "::endgroup::"
-}
-
-# ======================================================
-# 🛠️ MAKE ARGS
-# ======================================================
-
-setup_make_args() {
-    MAKE_ARGS=(
-        -C "$KERNEL_SRC"
-        O="$OUT_DIR"
-        ARCH="$ARCH"
-        CROSS_COMPILE="$TOOL_CROSS_COMPILE"
-        CROSS_COMPILE_COMPAT="$TOOL_CROSS_COMPILE_COMPAT"
-        LLVM=1
-        LLVM_IAS=1
-        BRANCH="${KERNEL_BRANCH}"
-        KMI_GENERATION="${KMI_GENERATION}"
-        LOCALVERSION="${LOCALVERSION}"
-        KBUILD_BUILD_USER="${KBUILD_BUILD_USER}"
-        KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST}"
-        -j"$(nproc --all)"
-    )
 }
 
 # ======================================================
@@ -213,109 +143,16 @@ run_fixes() {
 }
 
 # ======================================================
-# 🩹 PATCHES
+# 🏗️ BUILD
 # ======================================================
 
-run_patches() {
-    echo "::group::🩹 Patches"
-    touch "${KERNEL_SRC}/.scmversion"
-
-    log "Generating defconfig..."
-    make "${MAKE_ARGS[@]}" "$DEFCONFIG" || error "Defconfig failed!"
-
-    log "Applying Luminaire configs..."
-    source "${LUMINAIRE_PATCH_DIR}/luminaire_defconfig.sh"
-
-    log "Syncing config..."
-    make "${MAKE_ARGS[@]}" olddefconfig || error "olddefconfig failed!"
-
-    log "Applying version patches..."
-    for patch in "${VERSION_PATCH_DIR}/patches/"*.patch; do
-        [ -f "$patch" ] || continue
-        log "Applying patch: $(basename "$patch")..."
-        if patch -p1 --dry-run --forward -d "$KERNEL_SRC" < "$patch" > /dev/null 2>&1; then
-            patch -p1 -d "$KERNEL_SRC" < "$patch" || error "Patch failed: $(basename "$patch")"
-            log "$(basename "$patch") applied ✅"
-        elif patch -p1 --dry-run --reverse -d "$KERNEL_SRC" < "$patch" > /dev/null 2>&1; then
-            log "$(basename "$patch") already applied, skipping."
-        else
-            error "$(basename "$patch") failed — conflict!"
-        fi
-    done
-
-    log "Patches applied ✅"
-    echo "::endgroup::"
-}
-
-# ======================================================
-# 🏗️ BUILD KERNEL — KLEAF
-# ======================================================
-
-build_kernel_kleaf() {
-    echo "::group::🏗️ Build Kernel (Kleaf)"
-    log "Building kernel with Kleaf (Bazel)..."
-    START_TIME=$(date +%s)
-
-    KLEAF_ARGS=(
-        --config=fast
-        --lto="${ENABLE_LTO,,}"
-        "${BRANDING_KLEAF_ARGS[@]}"
-    )
-
-    (
-        set +eo pipefail
-        while true; do
-            sleep 30
-            ELAPSED=$(( $(date +%s) - START_TIME ))
-            printf "[LOG] Still building... ⏱️ %02d:%02d:%02d elapsed\n" \
-                $((ELAPSED/3600)) $((ELAPSED%3600/60)) $((ELAPSED%60))
-        done
-    ) &
-    HEARTBEAT_PID=$!
-
-    cd "$KERNEL_DIR"
-    tools/bazel build "${KLEAF_ARGS[@]}" //common:kernel_aarch64 \
-        || { kill "$HEARTBEAT_PID" 2>/dev/null; error "Kleaf build failed!"; }
-    cd "$ROOT_DIR"
-
-    kill "$HEARTBEAT_PID" 2>/dev/null || true
-    wait "$HEARTBEAT_PID" 2>/dev/null || true
-
-    BUILD_SECONDS=$(( $(date +%s) - START_TIME ))
-    log "Kleaf build completed in ${BUILD_SECONDS}s ✅"
-    echo "BUILD_SECONDS=${BUILD_SECONDS}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
-    echo "::endgroup::"
-}
-
-# ======================================================
-# 🏗️ BUILD KERNEL — MAKE
-# ======================================================
-
-build_kernel() {
-    echo "::group::🏗️ Build Kernel"
-    log "Building kernel..."
-    START_TIME=$(date +%s)
-
-    (
-        set +eo pipefail
-        while true; do
-            sleep 30
-            ELAPSED=$(( $(date +%s) - START_TIME ))
-            printf "[LOG] Still building... ⏱️ %02d:%02d:%02d elapsed\n" \
-                $((ELAPSED/3600)) $((ELAPSED%3600/60)) $((ELAPSED%60))
-        done
-    ) &
-    HEARTBEAT_PID=$!
-
-    make "${MAKE_ARGS[@]}" \
-        || { kill "$HEARTBEAT_PID" 2>/dev/null; error "Build failed!"; }
-
-    kill "$HEARTBEAT_PID" 2>/dev/null || true
-    wait "$HEARTBEAT_PID" 2>/dev/null || true
-
-    BUILD_SECONDS=$(( $(date +%s) - START_TIME ))
-    log "Build completed in ${BUILD_SECONDS}s ✅"
-    echo "BUILD_SECONDS=${BUILD_SECONDS}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
+run_build() {
+    echo "::group::🏗️ Build Kernel (${BUILD_SYSTEM})"
+    if [ "$BUILD_SYSTEM" = "KLEAF" ]; then
+        source "${LUMINAIRE_PATCH_DIR}/build/kleaf.sh"
+    else
+        source "${LUMINAIRE_PATCH_DIR}/build/make.sh"
+    fi
     echo "::endgroup::"
 }
 
