@@ -29,3 +29,10 @@ jobs:
           path: ${{ github.workspace }}/.ccache
           key: ccache-data-VANILLA-__keepalive__
           restore-keys: ccache-data-VANILLA-
+
+      - name: "♻️ Touch ccache RESUKISU_SUSFS"
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-data-RESUKISU_SUSFS-__keepalive__
+          restore-keys: ccache-data-RESUKISU_SUSFS-

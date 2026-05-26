@@ -6,9 +6,6 @@ on:
       build_system:
         type: string
         default: "MAKE"
-      variant:
-        type: string
-        default: "VANILLA"
       vanilla:
         type: boolean
         default: true
@@ -99,6 +96,7 @@ jobs:
             ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
+            ~/kernel-cache
             ~/.apt-cache
           key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
@@ -147,8 +145,8 @@ jobs:
       TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
-      USE_KERNEL_CACHE:            ${{ inputs.update_arsenal != 'yes' }}
-      USE_AK3_CACHE:               ${{ inputs.update_arsenal != 'yes' }}
+      USE_KERNEL_CACHE:            "true"
+      USE_AK3_CACHE:               "true"
       CCACHE_DIR:                  ${{ github.workspace }}/.ccache
       CCACHE_MAXSIZE:              "5G"
       VARIANT:                     ${{ matrix.variant }}
