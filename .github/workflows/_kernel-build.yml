@@ -24,6 +24,9 @@ on:
       warming_mode:
         type: string
         default: "false"
+      addons:
+        type: string
+        default: ""
     secrets:
       PERSONAL_TOKEN:
         required: true
@@ -154,6 +157,7 @@ jobs:
       ENABLE_LTO:                  ${{ inputs.enable_lto }}
       WARMING_MODE:                ${{ inputs.warming_mode }}
       BUILD_SYSTEM:                ${{ inputs.build_system }}
+      ADDONS:                      ${{ inputs.addons }}
 
     steps:
       - name: "Checkout"

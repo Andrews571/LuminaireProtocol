@@ -43,6 +43,10 @@ on:
           - "NONE"
           - "THIN"
           - "FULL"
+      addons:
+        description: "Addons (comma-separated, e.g: bbg,droidspaces)"
+        type: string
+        default: "bbg"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -58,6 +62,7 @@ jobs:
       kernel_version:  ${{ inputs.kernel_version }}
       update_arsenal:  ${{ inputs.update_arsenal }}
       enable_lto:      ${{ inputs.enable_lto }}
+      addons:          ${{ inputs.addons }}
     secrets:
       PERSONAL_TOKEN:              ${{ secrets.PERSONAL_TOKEN }}
       TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}

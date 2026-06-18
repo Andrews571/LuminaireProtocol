@@ -47,7 +47,8 @@ main() {
     restore_kernel_source
     run_branding
     run_variant
-    run_fixes
+    run_core
+    run_addons
     run_build
 
     if [ "$WARMING_MODE" = "true" ]; then
@@ -120,13 +121,33 @@ run_variant() {
 }
 
 # ======================================================
-# 🔧 FIXES
+# 🔧 CORE
 # ======================================================
 
-run_fixes() {
-    echo "::group::🔧 Fixes"
-    for fix in "${LUMINAIRE_PATCH_DIR}/fixes/"*.sh; do
-        source "$fix" || error "Fix failed: $(basename "$fix")"
+run_core() {
+    echo "::group::🔧 Core"
+    for script in "${LUMINAIRE_PATCH_DIR}/core/"*.sh; do
+        source "$script" || error "Core script failed: $(basename "$script")"
+    done
+    echo "::endgroup::"
+}
+
+# ======================================================
+# ⚡ ADDONS
+# ======================================================
+
+run_addons() {
+    [ -z "${ADDONS:-}" ] && return 0
+    echo "::group::⚡ Addons"
+    IFS=',' read -ra ADDON_LIST <<< "$ADDONS"
+    for addon in "${ADDON_LIST[@]}"; do
+        addon="${addon// /}"
+        local script="${LUMINAIRE_PATCH_DIR}/addons/${addon}.sh"
+        if [ -f "$script" ]; then
+            source "$script" || error "Addon failed: ${addon}"
+        else
+            log "⚠️ Addon not found: ${addon}"
+        fi
     done
     echo "::endgroup::"
 }
