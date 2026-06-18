@@ -60,10 +60,8 @@ jobs:
       CCACHE_MAXSIZE:   "5G"
 
     steps:
-      - name: "Clone LuminaireProtocol"
-        run: |
-          git clone --filter=blob:none \
-            "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
+      - name: "Checkout"
+        uses: actions/checkout@v4
 
       - name: "Free Disk Space"
         uses: jlumbroso/free-disk-space@main
@@ -158,10 +156,8 @@ jobs:
       BUILD_SYSTEM:                ${{ inputs.build_system }}
 
     steps:
-      - name: "Clone LuminaireProtocol"
-        run: |
-          git clone --filter=blob:none \
-            "https://x-access-token:${PERSONAL_TOKEN}@github.com/chainonyourdoor/LuminaireProtocol" .
+      - name: "Checkout"
+        uses: actions/checkout@v4
 
       - name: "Free Disk Space"
         uses: jlumbroso/free-disk-space@main
