@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ======================================================
-# 🔓 FIX — MODULE VERSION BYPASS
+# 🔓 MODULE VERSION BYPASS
 # ======================================================
 
 MODULE_VERSION_FILE="${KERNEL_DIR}/common/kernel/module/version.c"
