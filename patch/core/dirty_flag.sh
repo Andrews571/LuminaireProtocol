@@ -12,7 +12,7 @@ if [ -f "${KERNEL_DIR}/build/kernel/kleaf/impl/stamp.bzl" ]; then
 fi
 
 cd "${KERNEL_DIR}/common"
-git config --local user.name "github-actions[bot]"
-git config --local user.email "github-actions[bot]@users.noreply.github.com"
+git config --local user.name "chainonyourdoor"
+git config --local user.email "chainonyourdoor@gmail.com"
 git add . && git commit -m "Luminaire: Clean dirty flags" || true
 log "Dirty flags cleaned ✅"

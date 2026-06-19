@@ -53,7 +53,11 @@ def sync_project(task):
             print(f"Failed to download {name} from all attempted URLs.")
             return False
 
-        nproc = int(subprocess.check_output("nproc", shell=True).strip() or 1)
+        try:
+            nproc = int(subprocess.check_output("nproc", shell=True).strip())
+        except Exception:
+            nproc = 1
+
         tar_cmd = f"tar -I 'pigz -p {nproc} -b 256' -x --record-size=1M -C '{path}' {strip} -f '{name}.tar.gz'"
         subprocess.run(tar_cmd, shell=True, check=True)
         os.remove(f"{name}.tar.gz")
@@ -107,8 +111,17 @@ def main(manifest_path='manifest.xml'):
         path = project.get('path', name)
         remote_name = project.get('remote', def_remote)
         rev = project.get('revision', def_rev)
+
+        if not remote_name:
+            print(f"WARNING: no remote for project {name}, skipping.")
+            continue
+        if not rev:
+            print(f"WARNING: no revision for project {name}, skipping.")
+            continue
+
         base_url = remotes.get(remote_name)
         if not base_url:
+            print(f"WARNING: remote '{remote_name}' not found for project {name}, skipping.")
             continue
         if "github.com" in base_url:
             url = f"{base_url}/{name}/archive/{rev}.tar.gz"
@@ -120,6 +133,7 @@ def main(manifest_path='manifest.xml'):
             url = f"{base_url}/{name}/-/archive/{rev}.tar.gz"
             strip = "--strip-components=1"
         else:
+            print(f"WARNING: unsupported remote URL '{base_url}' for project {name}, skipping.")
             continue
         linkfiles = [(lf.get('src'), lf.get('dest')) for lf in project.findall('linkfile')]
         copyfiles = [(cf.get('src'), cf.get('dest')) for cf in project.findall('copyfile')]

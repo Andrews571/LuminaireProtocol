@@ -36,7 +36,9 @@ cp "$KERNEL_IMG" "${TOOL_AK3_DIR}/"
 ZIP_PATH="/tmp/${ZIP_NAME}"
 export ZIP_PATH ZIP_NAME
 cd "$TOOL_AK3_DIR"
-zip -r9 "$ZIP_PATH" . -x "*.git*" -x "*.github*" -x "*.md" -x "LICENSE"
+zip -r9 "$ZIP_PATH" . -x "*.git*" -x "*.github*" -x "*.md" -x "LICENSE" \
+    || error "ZIP creation failed!"
+[ -f "$ZIP_PATH" ] || error "ZIP file not found after creation!"
 cd "$ROOT_DIR"
 
 log "ZIP ready: ${ZIP_NAME} ✅"

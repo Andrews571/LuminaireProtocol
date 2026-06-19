@@ -26,8 +26,15 @@ SUSFS_VER="N/A"
 if [ "$VARIANT" != "VANILLA" ]; then
     SUSFS_H="${KERNEL_SRC}/include/linux/susfs.h"
     if [ -f "$SUSFS_H" ]; then
+        # Try with 'v' prefix first, then without
         SUSFS_VER=$(grep -m1 'SUSFS_VERSION' "$SUSFS_H" \
-            | grep -oP 'v\d+\.\d+\.\d+' | head -1 || echo "N/A")
+            | grep -oP 'v?\d+\.\d+\.\d+' | head -1 || true)
+        # Ensure 'v' prefix
+        if [ -n "$SUSFS_VER" ]; then
+            [[ "$SUSFS_VER" == v* ]] || SUSFS_VER="v${SUSFS_VER}"
+        else
+            SUSFS_VER="N/A"
+        fi
     fi
 fi
 
