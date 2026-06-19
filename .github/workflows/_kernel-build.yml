@@ -59,8 +59,9 @@ jobs:
       USE_AK3_CACHE:    ${{ inputs.update_arsenal != 'yes' }}
       KERNEL_VERSION:   ${{ inputs.kernel_version }}
       BUILD_SYSTEM:     ${{ inputs.build_system }}
-      CCACHE_DIR:       ${{ github.workspace }}/.ccache
-      CCACHE_MAXSIZE:   "5G"
+      # MAKE only — KLEAF uses Bazel cache
+      CCACHE_DIR:       ${{ inputs.build_system == 'MAKE' && format('{0}/.ccache', github.workspace) || '' }}
+      CCACHE_MAXSIZE:   ${{ inputs.build_system == 'MAKE' && '5G' || '' }}
 
     steps:
       - name: "Checkout"
