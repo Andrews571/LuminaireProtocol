@@ -3,7 +3,7 @@
 # ======================================================
 # 📦 ADDON — Droidspaces (LXC container runtime)
 # ======================================================
-# Requires: 001_GKI-below-6_12-fix_sysvipc_kabi_6_7_8.patch (already applied)
+# Requires: 001_GKI-below-6_12-fix_sysvipc_kabi_6_7_8.patch
 # Docs: https://github.com/ravindu644/Droidspaces-OSS
 
 log "Enabling Droidspaces support..."
