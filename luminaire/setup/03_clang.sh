@@ -26,8 +26,14 @@ fi
 
 set +o pipefail
 CLANG_VER=$(${TOOL_CLANG_DIR}/bin/clang --version 2>&1 | head -1 || true)
-COMPILER_STRING=$(${TOOL_CLANG_DIR}/bin/clang -v 2>&1 | head -1 | sed 's/(https.*//' | sed 's/ version//' || true)
+CIRRUS_CLANG_VER=$(${TOOL_CLANG_DIR}/bin/clang -v 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -1 || true)
 set -o pipefail
+if [ -n "$CIRRUS_CLANG_VER" ]; then
+    COMPILER_STRING="Cirrus Clang ${CIRRUS_CLANG_VER}"
+else
+    COMPILER_STRING="Cirrus Clang"
+    log "⚠️ Could not parse Cirrus Clang version from -v output"
+fi
 
 log "Clang ready: ${CLANG_VER}"
 echo "COMPILER_STRING=${COMPILER_STRING}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
