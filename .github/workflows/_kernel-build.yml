@@ -164,7 +164,7 @@ jobs:
           echo "Cache cleanup: ${DELETED} deleted, ${FAILED} failed"
           [ $FAILED -eq 0 ] || exit 1
   Start-Build:
-    name: "Build Kernel"
+    name: "Build Kernel (${{ matrix.root_solution }}${{ matrix.susfs && '+SUSFS' || '' }})"
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.build_system == 'KLEAF' && 90 || 60 }}
     needs: prepare-matrix
