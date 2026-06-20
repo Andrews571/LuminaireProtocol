@@ -4,7 +4,9 @@
 # 📦 RELEASE — ANYKERNEL3 PACKAGING
 # ======================================================
 
-ZIP_NAME="LuminaireAk3-${KERNEL_VERSION}.${SUBLEVEL}-$([ "$VARIANT" = "VANILLA" ] && echo "VANILLA" || echo "RSKSU+SUSFS")-R${GITHUB_RUN_NUMBER:-0}.zip"
+ZIP_VARIANT_TAG="${ROOT_SOLUTION}"
+[ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ] && ZIP_VARIANT_TAG="${ZIP_VARIANT_TAG}+SUSFS"
+ZIP_NAME="LuminaireAk3-${KERNEL_VERSION}.${SUBLEVEL}-${ZIP_VARIANT_TAG}-R${GITHUB_RUN_NUMBER:-0}.zip"
 export ZIP_NAME
 
 if [ "${USE_AK3_CACHE}" = "true" ] && [ -d "${HOME}/ak3-cache" ]; then

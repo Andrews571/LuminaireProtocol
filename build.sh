@@ -34,7 +34,7 @@ LUMINAIRE_PATCH_DIR="${ROOT_DIR}/luminaire"
 
 main() {
     echo "========================================"
-    echo "  ✨ Luminaire Protocol — ${VARIANT}"
+    echo "  ✨ Luminaire Protocol — ${ROOT_SOLUTION}$([ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ] && echo "+SUSFS")"
     echo "  🖥️ CPU: $(nproc --all) cores"
     echo "  💾 RAM: $(free -h | grep Mem | awk '{print $2}')"
     echo "  📅 $(date)"
@@ -109,15 +109,23 @@ run_branding() {
 }
 
 # ======================================================
-# 🔑 VARIANT
+# 🔑 ROOT SOLUTION & SUSFS
 # ======================================================
 
 run_variant() {
-    local script="${VERSION_PATCH_DIR}/ksu/${VARIANT,,}.sh"
-    [ -f "$script" ] || return 0
-    echo "::group::🔑 Variant (${VARIANT})"
-    source "$script" || error "Variant script failed: $(basename "$script")"
-    echo "::endgroup::"
+    local script="${VERSION_PATCH_DIR}/ksu/${ROOT_SOLUTION,,}.sh"
+    if [ -f "$script" ]; then
+        echo "::group::🔑 Root Solution (${ROOT_SOLUTION})"
+        source "$script" || error "Root solution script failed: $(basename "$script")"
+        echo "::endgroup::"
+    fi
+
+    if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
+        local susfs_script="${VERSION_PATCH_DIR}/ksu/susfs.sh"
+        echo "::group::🧬 SuSFS"
+        source "$susfs_script" || error "SuSFS script failed: $(basename "$susfs_script")"
+        echo "::endgroup::"
+    fi
 }
 
 # ======================================================

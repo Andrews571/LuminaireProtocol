@@ -9,9 +9,15 @@ on:
       vanilla:
         type: boolean
         default: true
-      resukisu_susfs:
+      resukisu:
         type: boolean
         default: false
+      sukisu:
+        type: boolean
+        default: false
+      susfs:
+        type: boolean
+        default: true
       kernel_version:
         type: string
         default: "6.1"
@@ -82,15 +88,17 @@ jobs:
         id: set
         run: |
           variants=()
-          ${{ inputs.vanilla }}         && variants+=("VANILLA")
-          ${{ inputs.resukisu_susfs }}   && variants+=("RESUKISU_SUSFS")
+          ${{ inputs.vanilla }}  && variants+=('{"root_solution":"VANILLA","susfs":false}')
+          ${{ inputs.resukisu }} && variants+=('{"root_solution":"RESUKISU","susfs":${{ inputs.susfs }}}')
+          ${{ inputs.sukisu }}   && variants+=('{"root_solution":"SUKISU","susfs":${{ inputs.susfs }}}')
 
           if [ ${#variants[@]} -eq 0 ]; then
-            echo "No variants selected!"
+            echo "No root solutions selected!"
             exit 1
           fi
 
-          echo "matrix=$(jq -cn '$ARGS.positional' --args "${variants[@]}")" >> $GITHUB_OUTPUT
+          matrix_json=$(printf '%s\n' "${variants[@]}" | jq -cs '{include: .}')
+          echo "matrix=${matrix_json}" >> $GITHUB_OUTPUT
 
       - name: "Restore Arsenal Cache"
         if: inputs.update_arsenal != 'yes'
@@ -153,8 +161,7 @@ jobs:
     timeout-minutes: ${{ inputs.build_system == 'KLEAF' && 90 || 60 }}
     needs: prepare-matrix
     strategy:
-      matrix:
-        variant: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
       fail-fast: false
 
     env:
@@ -164,8 +171,9 @@ jobs:
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
       USE_KERNEL_CACHE:            "true"
-      USE_AK3_CACHE:               "true"
-      VARIANT:                     ${{ matrix.variant }}
+      USE_AK3_CACHE:                "true"
+      ROOT_SOLUTION:                ${{ matrix.root_solution }}
+      SUSFS_ENABLED:                ${{ matrix.susfs }}
       KERNEL_VERSION:              ${{ inputs.kernel_version }}
       ENABLE_LTO:                  ${{ inputs.enable_lto }}
       WARMING_MODE:                ${{ inputs.warming_mode }}
@@ -211,7 +219,7 @@ jobs:
         if: inputs.build_system != 'KLEAF'
         uses: ./.github/actions/restore-caches
         with:
-          ccache-prefix: ccache-data-${{ matrix.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-
+          ccache-prefix: ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-
           gh-token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Disk Usage"
@@ -228,14 +236,14 @@ jobs:
         if: always() && inputs.build_system != 'KLEAF'
         uses: ./.github/actions/save-caches
         with:
-          ccache-prefix: ccache-data-${{ matrix.variant }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-
+          ccache-prefix: ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-
           gh-token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Upload Build Info"
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: build-info-${{ matrix.variant }}
+          name: build-info-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}
           path: /tmp/build-info.txt
           retention-days: 1
           if-no-files-found: ignore

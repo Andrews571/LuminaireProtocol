@@ -25,10 +25,21 @@ on:
         description: "VANILLA"
         type: boolean
         default: true
-      resukisu_susfs:
-        description: "ReSukiSU+SuSFS"
+      resukisu:
+        description: "ReSukiSU"
         type: boolean
         default: false
+      sukisu:
+        description: "SukiSU-Ultra"
+        type: boolean
+        default: false
+      susfs:
+        description: "SuSFS"
+        type: choice
+        default: "enable"
+        options:
+          - "enable"
+          - "disable"
       update_arsenal:
         description: "Refresh Arsenal"
         type: choice
@@ -67,7 +78,9 @@ jobs:
     with:
       build_system:   ${{ inputs.build_system }}
       vanilla:        ${{ inputs.vanilla }}
-      resukisu_susfs: ${{ inputs.resukisu_susfs }}
+      resukisu:       ${{ inputs.resukisu }}
+      sukisu:         ${{ inputs.sukisu }}
+      susfs:          ${{ inputs.susfs == 'enable' }}
       kernel_version: ${{ inputs.kernel_version }}
       update_arsenal: ${{ inputs.update_arsenal }}
       enable_lto:     ${{ inputs.enable_lto }}

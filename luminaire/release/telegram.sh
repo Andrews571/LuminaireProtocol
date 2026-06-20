@@ -52,15 +52,16 @@ BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM,,}"
 BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM_DISPLAY^}"
 
 # Root Solution mapping
-case "${VARIANT}" in
-    VANILLA)         ROOT_SOLUTION="Vanilla" ;;
-    RESUKISU_SUSFS)  ROOT_SOLUTION="Resukisu" ;;
-    *)               ROOT_SOLUTION="${VARIANT}" ;;
+case "${ROOT_SOLUTION}" in
+    VANILLA)  ROOT_SOLUTION_DISPLAY="Vanilla" ;;
+    RESUKISU) ROOT_SOLUTION_DISPLAY="Resukisu" ;;
+    SUKISU)   ROOT_SOLUTION_DISPLAY="Sukisu" ;;
+    *)        ROOT_SOLUTION_DISPLAY="${ROOT_SOLUTION}" ;;
 esac
 
 # SuSFS version — extract from susfs.h if available
 SUSFS_VER="N/A"
-if [ "$VARIANT" != "VANILLA" ]; then
+if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
     SUSFS_H="${KERNEL_SRC}/include/linux/susfs.h"
     if [ -f "$SUSFS_H" ]; then
         # Try with 'v' prefix first, then without
@@ -93,7 +94,7 @@ mdv2_code_escape() {
 }
 
 LINUX_VER_ESC="$(mdv2_code_escape "$LINUX_VER")"
-ROOT_SOLUTION_ESC="$(mdv2_code_escape "$ROOT_SOLUTION")"
+ROOT_SOLUTION_ESC="$(mdv2_code_escape "$ROOT_SOLUTION_DISPLAY")"
 SUSFS_VER_ESC="$(mdv2_code_escape "$SUSFS_VER")"
 KERNEL_BRANCH_ESC="$(mdv2_code_escape "$KERNEL_BRANCH")"
 BUILD_SYSTEM_DISPLAY_ESC="$(mdv2_code_escape "$BUILD_SYSTEM_DISPLAY")"
