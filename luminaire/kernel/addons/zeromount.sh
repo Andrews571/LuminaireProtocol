@@ -36,6 +36,34 @@ import sys, re
 with open(sys.argv[1]) as f:
     content = f.read()
 
+# Fix 1: Move #include <linux/zeromount.h> from inside a function to top-level
+# The patch places it inside posix_acl_check() which is invalid C
+INCLUDE_INSIDE = (
+    '#ifdef CONFIG_ZEROMOUNT\n'
+    '#include <linux/zeromount.h>\n'
+    '#endif\n'
+)
+
+if INCLUDE_INSIDE in content:
+    count = content.count(INCLUDE_INSIDE)
+    # Remove ALL occurrences
+    content = content.replace(INCLUDE_INSIDE, '')
+    # Insert once after last #include in proper include section (before line 60)
+    lines = content.split('\n')
+    insert_after = 0
+    for i, line in enumerate(lines[:60]):
+        if line.startswith('#include'):
+            insert_after = i
+    lines.insert(insert_after + 1,
+                 '#ifdef CONFIG_ZEROMOUNT\n'
+                 '#include <linux/zeromount.h>\n'
+                 '#endif')
+    content = '\n'.join(lines)
+    print(f"namei.c: removed {count} misplaced include(s), re-inserted at line {insert_after + 2}.")
+else:
+    print("namei.c: include already in correct position or not found.")
+
+# Fix 2: Remove misplaced zeromount function call blocks
 ZM_BLOCK = (
     '\n#ifdef CONFIG_ZEROMOUNT\n'
     '\tif (zeromount_is_injected_file(inode)) {\n'
@@ -49,15 +77,10 @@ ZM_BLOCK = (
     '\t}\n'
     '#endif\n'
 )
-
-if ZM_BLOCK not in content:
-    print("namei.c: zeromount block not found, skipping.")
-    sys.exit(0)
-
-# Remove ALL misplaced zeromount blocks first
 count = content.count(ZM_BLOCK)
-content = content.replace(ZM_BLOCK, '')
-print(f"namei.c: removed {count} misplaced zeromount block(s).")
+if count:
+    content = content.replace(ZM_BLOCK, '')
+    print(f"namei.c: removed {count} misplaced zeromount call block(s).")
 
 with open(sys.argv[1], 'w') as f:
     f.write(content)
