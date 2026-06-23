@@ -29,6 +29,41 @@ fi
 
 rm -f "$ZEROMOUNT_PATCH"
 
+log "Fixing namei.c scope issues (zeromount blocks in wrong positions)..."
+python3 - "${KERNEL_SRC}/fs/namei.c" << 'PYEOF'
+import sys, re
+
+with open(sys.argv[1]) as f:
+    content = f.read()
+
+ZM_BLOCK = (
+    '\n#ifdef CONFIG_ZEROMOUNT\n'
+    '\tif (zeromount_is_injected_file(inode)) {\n'
+    '\t\tif (mask & MAY_WRITE)\n'
+    '\t\t\treturn -EACCES;\n'
+    '\t\treturn 0;\n'
+    '\t}\n'
+    '\n'
+    '\tif (S_ISDIR(inode->i_mode) && zeromount_is_traversal_allowed(inode, mask)) {\n'
+    '\t\treturn 0;\n'
+    '\t}\n'
+    '#endif\n'
+)
+
+if ZM_BLOCK not in content:
+    print("namei.c: zeromount block not found, skipping.")
+    sys.exit(0)
+
+# Remove ALL misplaced zeromount blocks first
+count = content.count(ZM_BLOCK)
+content = content.replace(ZM_BLOCK, '')
+print(f"namei.c: removed {count} misplaced zeromount block(s).")
+
+with open(sys.argv[1], 'w') as f:
+    f.write(content)
+PYEOF
+log "namei.c fixed ✅"
+
 log "Fixing task_mmu.c scope issue (zeromount call outside inode scope)..."
 python3 - "${KERNEL_SRC}/fs/proc/task_mmu.c" << 'PYEOF'
 import sys
