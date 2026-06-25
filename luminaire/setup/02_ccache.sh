@@ -41,6 +41,9 @@ export CCACHE_IS_KERNEL_COMPILING="true"
 export CCACHE_COMPRESS=1
 export CCACHE_COMPRESSLEVEL=1
 
+[ -n "${CCACHE_DIR}" ] || error "ccache: CCACHE_DIR is not set!"
+[ -n "${CCACHE_MAXSIZE}" ] || error "ccache: CCACHE_MAXSIZE is not set!"
+
 # Reset stats (not cache data) for fresh tracking
 ${TOOL_CCACHE_BIN} --zero-stats > /dev/null 2>&1 || true
 log "ccache ready | dir: ${CCACHE_DIR} | max: ${CCACHE_MAXSIZE}"
