@@ -143,9 +143,46 @@ BBG              : ${BBG_ESC}
 Droidspaces      : ${DROIDSPACES_ESC}
 \`\`\`"
 
+# MarkdownV2 outside code block requires escaping special chars
+mdv2_escape() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//_/\\_}"
+    s="${s//*/ \\*}"
+    s="${s//[/\\[}"
+    s="${s//]/\\]}"
+    s="${s//(/\\(}"
+    s="${s//)/\\)}"
+    s="${s//~/\\~}"
+    s="${s//\`/\\\`}"
+    s="${s//>/\\>}"
+    s="${s//#/\\#}"
+    s="${s//+/\\+}"
+    s="${s//-/\\-}"
+    s="${s//=/\\=}"
+    s="${s//|/\\|}"
+    s="${s//\{/\\{}"
+    s="${s//\}/\\}}"
+    s="${s//./\\.}"
+    s="${s//!/\\!}"
+    printf '%s' "$s"
+}
+
+COMMIT_SHORT="${GITHUB_SHA:0:7}"
+COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+COMMIT_SHORT_ESC="$(mdv2_escape "$COMMIT_SHORT")"
+COMMIT_URL_ESC="$(mdv2_escape "$COMMIT_URL")"
+RUN_URL_ESC="$(mdv2_escape "$RUN_URL")"
+RUN_ID_ESC="$(mdv2_escape "$GITHUB_RUN_ID")"
+
+FOOTER="[${COMMIT_SHORT_ESC}](${COMMIT_URL_ESC}) \\| [Run \\#${RUN_ID_ESC}](${RUN_URL_ESC})"
+
 CAPTION="${BLOCK_LUMINAIRE}
 ${BLOCK_ROOT}
-${BLOCK_ADDONS}"
+${BLOCK_ADDONS}
+${FOOTER}"
 
 # ------------------------------------------------------
 # Enforce Telegram's 1024-char caption hard limit
