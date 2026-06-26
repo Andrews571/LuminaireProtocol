@@ -19,18 +19,9 @@ cd "${ROOT_DIR}"
 
 DEFCONFIG_FILE="${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"
 
-log "Patching CONFIG_LSM in gki_defconfig to include baseband_guard..."
-if grep -q "^CONFIG_LSM=" "$DEFCONFIG_FILE"; then
-    if grep -q "baseband_guard" "$DEFCONFIG_FILE"; then
-        log "baseband_guard already in CONFIG_LSM, skipping"
-    else
-        sed -i 's/^CONFIG_LSM="\?\(.*[^"]\)"\?$/CONFIG_LSM=\1,baseband_guard/' "$DEFCONFIG_FILE"
-        log "baseband_guard appended to CONFIG_LSM ✅"
-    fi
-else
-    warn "CONFIG_LSM not found in gki_defconfig — BBG may fail at build time"
-fi
-
 log "Enabling CONFIG_BBG..."
 echo "CONFIG_BBG=y" >> "$DEFCONFIG_FILE"
-log "BBG setup complete ✅"
+
+export BBG_ENABLED=true
+
+log "BBG setup complete ✅ (CONFIG_LSM will be patched after defconfig)"

@@ -39,3 +39,17 @@ else
 fi
 
 log "Luminaire defconfig applied ✅"
+
+# BBG requires baseband_guard in CONFIG_LSM — patch here because .config
+# is not available when bbg.sh runs (before make defconfig)
+if [ "${BBG_ENABLED:-false}" = "true" ]; then
+    CURRENT_LSM=$(config --state CONFIG_LSM 2>/dev/null | tr -d '"' || true)
+    if [ -z "$CURRENT_LSM" ] || [ "$CURRENT_LSM" = "undef" ]; then
+        warn "BBG: CONFIG_LSM state unknown — skipping LSM patch"
+    elif echo "$CURRENT_LSM" | grep -q "baseband_guard"; then
+        log "BBG: baseband_guard already in CONFIG_LSM ✅"
+    else
+        config --set-str CONFIG_LSM "${CURRENT_LSM},baseband_guard"
+        log "BBG: baseband_guard appended to CONFIG_LSM ✅"
+    fi
+fi
