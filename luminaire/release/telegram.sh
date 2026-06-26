@@ -7,7 +7,7 @@
 TELEGRAM_API_TIMEOUT="${TELEGRAM_API_TIMEOUT:-60}"
 TELEGRAM_MAX_RETRIES="${TELEGRAM_MAX_RETRIES:-3}"
 TELEGRAM_MAX_FILE_BYTES=$((50 * 1024 * 1024))
-TELEGRAM_CAPTION_LIMIT=1024
+CAPTION_BUILDER="${LUMINAIRE_PATCH_DIR}/release/telegram_caption.py"
 
 # ------------------------------------------------------
 # Guard clauses
@@ -44,19 +44,16 @@ if [ "$ZIP_SIZE_BYTES" -gt "$TELEGRAM_MAX_FILE_BYTES" ]; then
 fi
 
 # ------------------------------------------------------
-# Build display fields
+# Build display fields for caption builder
 # ------------------------------------------------------
 LINUX_VER="${KERNEL_VERSION}.${SUBLEVEL}"
-COMPILER_DISPLAY="${COMPILER_STRING:-N/A}"
 
 BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM,,}"
 BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM_DISPLAY^}"
 if [ "${BUILD_SYSTEM}" = "MAKE" ] && [ -n "${CLANG_VARIANT:-}" ]; then
-    CLANG_LABEL="${CLANG_VARIANT^}"
-    BUILD_SYSTEM_DISPLAY="Make - ${CLANG_LABEL}"
+    BUILD_SYSTEM_DISPLAY="Make - ${CLANG_VARIANT^}"
 fi
 
-# Root Solution mapping
 case "${ROOT_SOLUTION}" in
     VANILLA)  ROOT_SOLUTION_DISPLAY="Vanilla" ;;
     RESUKISU) ROOT_SOLUTION_DISPLAY="ReSukiSU" ;;
@@ -64,7 +61,6 @@ case "${ROOT_SOLUTION}" in
     *)        ROOT_SOLUTION_DISPLAY="${ROOT_SOLUTION}" ;;
 esac
 
-# SuSFS version
 SUSFS_VER="N/A"
 if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
     SUSFS_H="${KERNEL_SRC}/include/linux/susfs.h"
@@ -79,14 +75,12 @@ if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
     fi
 fi
 
-# Mountless Engine
 MOUNTLESS_DISPLAY="N/A"
 case ",${ADDONS}," in
     *,nomount,*)   MOUNTLESS_DISPLAY="NoMount" ;;
     *,zeromount,*) MOUNTLESS_DISPLAY="ZeroMount" ;;
 esac
 
-# Addons flags
 REKERNEL_DISPLAY="Disable"
 BBG_DISPLAY="Disable"
 DROIDSPACES_DISPLAY="Disable"
@@ -95,100 +89,25 @@ case ",${ADDONS}," in *,bbg,*)         BBG_DISPLAY="Enable" ;; esac
 case ",${ADDONS}," in *,droidspaces,*) DROIDSPACES_DISPLAY="Enable" ;; esac
 
 # ------------------------------------------------------
-# Escape for MarkdownV2 code fence
-# Inside code block only backtick and backslash need escaping
+# Build captions (1 Python call, outputs 2 temp files)
 # ------------------------------------------------------
-mdv2_code_escape() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\`/\\\`}"
-    printf '%s' "$s"
-}
+CAPTION_GROUP_FILE="/tmp/telegram_caption_group.txt"
+CAPTION_CHANNEL_FILE="/tmp/telegram_caption_channel.txt"
 
-LINUX_VER_ESC="$(mdv2_code_escape "$LINUX_VER")"
-KERNEL_BRANCH_ESC="$(mdv2_code_escape "$KERNEL_BRANCH")"
-BUILD_SYSTEM_ESC="$(mdv2_code_escape "$BUILD_SYSTEM_DISPLAY")"
-COMPILER_ESC="$(mdv2_code_escape "$COMPILER_DISPLAY")"
-LTO_ESC="$(mdv2_code_escape "${ENABLE_LTO:-NONE}")"
-ROOT_SOLUTION_ESC="$(mdv2_code_escape "$ROOT_SOLUTION_DISPLAY")"
-SUSFS_VER_ESC="$(mdv2_code_escape "$SUSFS_VER")"
-MOUNTLESS_ESC="$(mdv2_code_escape "$MOUNTLESS_DISPLAY")"
-REKERNEL_ESC="$(mdv2_code_escape "$REKERNEL_DISPLAY")"
-BBG_ESC="$(mdv2_code_escape "$BBG_DISPLAY")"
-DROIDSPACES_ESC="$(mdv2_code_escape "$DROIDSPACES_DISPLAY")"
-DATE_ESC="$(mdv2_code_escape "$(date +'%d %b %Y')")"
+LINUX_VER="$LINUX_VER" \
+BUILD_SYSTEM_DISPLAY="$BUILD_SYSTEM_DISPLAY" \
+ROOT_SOLUTION_DISPLAY="$ROOT_SOLUTION_DISPLAY" \
+SUSFS_VER="$SUSFS_VER" \
+MOUNTLESS_DISPLAY="$MOUNTLESS_DISPLAY" \
+REKERNEL_DISPLAY="$REKERNEL_DISPLAY" \
+BBG_DISPLAY="$BBG_DISPLAY" \
+DROIDSPACES_DISPLAY="$DROIDSPACES_DISPLAY" \
+python3 "$CAPTION_BUILDER" "$CAPTION_GROUP_FILE" "$CAPTION_CHANNEL_FILE" \
+    || error "Telegram: caption builder failed!"
 
-# ------------------------------------------------------
-# Build caption
-# ------------------------------------------------------
-BLOCK_LUMINAIRE="\`\`\`Luminaire
-Linux        : ${LINUX_VER_ESC}
-Branch       : ${KERNEL_BRANCH_ESC}
-Build System : ${BUILD_SYSTEM_ESC}
-Compiler     : ${COMPILER_ESC}
-LTO          : ${LTO_ESC}
-Date         : ${DATE_ESC}
-\`\`\`"
-BLOCK_ROOT="\`\`\`RootSolution
-KSU   : ${ROOT_SOLUTION_ESC}
-SuSFS : ${SUSFS_VER_ESC}
-\`\`\`"
-BLOCK_ADDONS="\`\`\`Add-ons
-Mountless Engine : ${MOUNTLESS_ESC}
-Re:Kernel        : ${REKERNEL_ESC}
-BBG              : ${BBG_ESC}
-Droidspaces      : ${DROIDSPACES_ESC}
-\`\`\`"
-
-# MarkdownV2 outside code block requires escaping special chars
-mdv2_escape() {
-    python3 -c "
-import sys
-s = sys.argv[1]
-special = chr(95)+chr(42)+chr(91)+chr(93)+chr(40)+chr(41)+chr(126)+chr(96)+chr(62)+chr(35)+chr(43)+chr(45)+chr(61)+chr(124)+chr(123)+chr(125)+chr(46)+chr(33)
-for ch in special:
-    s = s.replace(ch, chr(92) + ch)
-sys.stdout.write(s)
-" "$1"
-}
-
-mdv2_escape_url() {
-    python3 -c "
-import sys
-s = sys.argv[1]
-# In MarkdownV2 inline link URL (inside parentheses), only ) and \ need escaping
-s = s.replace(chr(92), chr(92)+chr(92))
-s = s.replace(chr(41), chr(92)+chr(41))
-sys.stdout.write(s)
-" "$1"
-}
-
-COMMIT_SHORT="${GITHUB_SHA:0:7}"
-COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
-RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-COMMIT_SHORT_ESC="$(mdv2_escape "$COMMIT_SHORT")"
-COMMIT_URL_ESC="$(mdv2_escape_url "$COMMIT_URL")"
-RUN_URL_ESC="$(mdv2_escape_url "$RUN_URL")"
-RUN_ID_ESC="$(mdv2_escape "$GITHUB_RUN_ID")"
-
-FOOTER="[${COMMIT_SHORT_ESC}](${COMMIT_URL_ESC}) \\| [Run \\#${RUN_ID_ESC}](${RUN_URL_ESC})"
-
-CAPTION="${BLOCK_LUMINAIRE}
-${BLOCK_ROOT}
-${BLOCK_ADDONS}
-${FOOTER}"
-
-# ------------------------------------------------------
-# Enforce Telegram's 1024-char caption hard limit
-# ------------------------------------------------------
-CAPTION_LEN=$(printf '%s' "$CAPTION" | wc -m)
-if [ "$CAPTION_LEN" -gt "$TELEGRAM_CAPTION_LIMIT" ]; then
-    warn "Caption is ${CAPTION_LEN} chars, exceeds Telegram's ${TELEGRAM_CAPTION_LIMIT}-char limit — truncating"
-    SUFFIX=$'\n…\n```'
-    KEEP=$(( TELEGRAM_CAPTION_LIMIT - ${#SUFFIX} ))
-    CAPTION="$(printf '%s' "$CAPTION" | head -c "$KEEP")${SUFFIX}"
-fi
+CAPTION="$(cat "$CAPTION_GROUP_FILE")"
+CAPTION_CHANNEL="$(cat "$CAPTION_CHANNEL_FILE")"
+rm -f "$CAPTION_GROUP_FILE" "$CAPTION_CHANNEL_FILE"
 
 # ------------------------------------------------------
 # Send helper
@@ -276,26 +195,6 @@ send_document \
 # Send to release channel (if enabled)
 # ------------------------------------------------------
 if [ "${RELEASE_CHANNEL:-false}" = "true" ] && [ -n "${TELEGRAM_CHANNEL_ID:-}" ]; then
-    DONATE_URL_ESC="$(mdv2_escape_url "https://sociabuzz.com/chainonyourdoor")"
-    DONATE_LINE="*My dev partner insists on being paid in Whiskas\\. If this kernel's been useful, maybe help me keep the little engineer fed?* 🐱"
-    DONATE_LINK="[Buy the cat some Whiskas](${DONATE_URL_ESC})"
-
-    CAPTION_CHANNEL="${BLOCK_LUMINAIRE}
-${BLOCK_ROOT}
-${BLOCK_ADDONS}
-${FOOTER}
-
-${DONATE_LINE}
-${DONATE_LINK}"
-
-    CAPTION_CHANNEL_LEN=$(printf '%s' "$CAPTION_CHANNEL" | wc -m)
-    if [ "$CAPTION_CHANNEL_LEN" -gt "$TELEGRAM_CAPTION_LIMIT" ]; then
-        warn "Channel caption is ${CAPTION_CHANNEL_LEN} chars, truncating"
-        SUFFIX=$'\n…\n```'
-        KEEP=$(( TELEGRAM_CAPTION_LIMIT - ${#SUFFIX} ))
-        CAPTION_CHANNEL="$(printf '%s' "$CAPTION_CHANNEL" | head -c "$KEEP")${SUFFIX}"
-    fi
-
     send_document \
         "$TELEGRAM_CHANNEL_ID" \
         "" \
