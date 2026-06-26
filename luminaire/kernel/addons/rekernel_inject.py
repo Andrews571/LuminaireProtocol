@@ -215,7 +215,7 @@ BINDER_ALLOC_HOOK = """\
 SIGNAL_HOOK = """\
 \t/* Re:Kernel: notify on kill signal to frozen proc */
 \tif (start_rekernel_server() == 0) {
-\t\tif (line_is_frozen(current)
+\t\tif (line_is_frozen(p)
 \t\t    && (sig == SIGKILL || sig == SIGTERM
 \t\t\t|| sig == SIGABRT || sig == SIGQUIT)) {
 \t\t\tchar binder_kmsg[PACKET_SIZE];
@@ -223,9 +223,9 @@ SIGNAL_HOOK = """\
 \t\t\tsnprintf(binder_kmsg, sizeof(binder_kmsg),
 \t\t\t\t"type=Signal,signal=%d,killer_pid=%d,"
 \t\t\t\t"killer=%d,dst_pid=%d,dst=%d;",
-\t\t\t\tsig, task_tgid_nr(p), task_uid(p).val,
-\t\t\t\ttask_tgid_nr(current),
-\t\t\t\ttask_uid(current).val);
+\t\t\t\tsig, task_tgid_nr(current),
+\t\t\t\ttask_uid(current).val,
+\t\t\t\ttask_tgid_nr(p), task_uid(p).val);
 \t\t\tsend_netlink_message(binder_kmsg,
 \t\t\t\t\t     strlen(binder_kmsg));
 \t\t}
