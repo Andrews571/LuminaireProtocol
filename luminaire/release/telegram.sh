@@ -4,13 +4,13 @@
 # 📨 RELEASE — TELEGRAM
 # ======================================================
 
-TELEGRAM_API_TIMEOUT="${TELEGRAM_API_TIMEOUT:-60}"      # seconds, per attempt
+TELEGRAM_API_TIMEOUT="${TELEGRAM_API_TIMEOUT:-60}"
 TELEGRAM_MAX_RETRIES="${TELEGRAM_MAX_RETRIES:-3}"
-TELEGRAM_MAX_FILE_BYTES=$((50 * 1024 * 1024))            # Bot API hard limit
-TELEGRAM_CAPTION_LIMIT=1024                              # Bot API hard limit
+TELEGRAM_MAX_FILE_BYTES=$((50 * 1024 * 1024))
+TELEGRAM_CAPTION_LIMIT=1024
 
 # ------------------------------------------------------
-# Guard clauses — every skip is logged, never silent
+# Guard clauses
 # ------------------------------------------------------
 if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
     warn "Skipping Telegram: TELEGRAM_BOT_TOKEN not set"
@@ -30,7 +30,7 @@ if [ ! -f "${ZIP_PATH:-}" ]; then
 fi
 
 # ------------------------------------------------------
-# File size check — Bot API hard limit is 50MB for sendDocument
+# File size check
 # ------------------------------------------------------
 ZIP_SIZE_BYTES=$(stat -c%s "$ZIP_PATH" 2>/dev/null || stat -f%z "$ZIP_PATH" 2>/dev/null || echo 0)
 if [ "$ZIP_SIZE_BYTES" -eq 0 ]; then
@@ -48,26 +48,29 @@ fi
 # ------------------------------------------------------
 LINUX_VER="${KERNEL_VERSION}.${SUBLEVEL}"
 COMPILER_DISPLAY="${COMPILER_STRING:-N/A}"
+
 BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM,,}"
 BUILD_SYSTEM_DISPLAY="${BUILD_SYSTEM_DISPLAY^}"
+if [ "${BUILD_SYSTEM}" = "MAKE" ] && [ -n "${CLANG_VARIANT:-}" ]; then
+    CLANG_LABEL="${CLANG_VARIANT^}"
+    BUILD_SYSTEM_DISPLAY="Make - ${CLANG_LABEL}"
+fi
 
 # Root Solution mapping
 case "${ROOT_SOLUTION}" in
     VANILLA)  ROOT_SOLUTION_DISPLAY="Vanilla" ;;
-    RESUKISU) ROOT_SOLUTION_DISPLAY="Resukisu" ;;
-    SUKISU)   ROOT_SOLUTION_DISPLAY="Sukisu" ;;
+    RESUKISU) ROOT_SOLUTION_DISPLAY="ReSukiSU" ;;
+    SUKISU)   ROOT_SOLUTION_DISPLAY="SukiSU-Ultra" ;;
     *)        ROOT_SOLUTION_DISPLAY="${ROOT_SOLUTION}" ;;
 esac
 
-# SuSFS version — extract from susfs.h if available
+# SuSFS version
 SUSFS_VER="N/A"
 if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
     SUSFS_H="${KERNEL_SRC}/include/linux/susfs.h"
     if [ -f "$SUSFS_H" ]; then
-        # Try with 'v' prefix first, then without
         SUSFS_VER=$(grep -m1 'SUSFS_VERSION' "$SUSFS_H" \
             | grep -oP 'v?\d+\.\d+\.\d+' | head -1 || true)
-        # Ensure 'v' prefix
         if [ -n "$SUSFS_VER" ]; then
             [[ "$SUSFS_VER" == v* ]] || SUSFS_VER="v${SUSFS_VER}"
         else
@@ -76,22 +79,24 @@ if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
     fi
 fi
 
-# Mountless Engine — parse from ADDONS comma-separated list
-MOUNTLESS_ENGINE_DISPLAY="None"
+# Mountless Engine
+MOUNTLESS_DISPLAY="N/A"
 case ",${ADDONS}," in
-    *,nomount,*)   MOUNTLESS_ENGINE_DISPLAY="NoMount" ;;
-    *,zeromount,*) MOUNTLESS_ENGINE_DISPLAY="ZeroMount" ;;
+    *,nomount,*)   MOUNTLESS_DISPLAY="NoMount" ;;
+    *,zeromount,*) MOUNTLESS_DISPLAY="ZeroMount" ;;
 esac
 
+# Addons flags
+REKERNEL_DISPLAY="N/A"
+BBG_DISPLAY="N/A"
+DROIDSPACES_DISPLAY="N/A"
+case ",${ADDONS}," in *,rekernel,*)    REKERNEL_DISPLAY="Enable" ;; esac
+case ",${ADDONS}," in *,bbg,*)         BBG_DISPLAY="Enable" ;; esac
+case ",${ADDONS}," in *,droidspaces,*) DROIDSPACES_DISPLAY="Enable" ;; esac
+
 # ------------------------------------------------------
-# Escape every dynamic field before it goes inside a
-# MarkdownV2 code fence (```Luminaire ... ```).
-# Inside a code block, ONLY backtick (`) and backslash (\)
-# need escaping — NOT the usual MarkdownV2 special chars
-# like . - ! ( ) etc. Escaping those inside a code fence
-# would show literal backslashes in the rendered message.
-# Order matters: backslash must be escaped FIRST, otherwise
-# the backslash we insert for backticks gets re-escaped.
+# Escape for MarkdownV2 code fence
+# Inside code block only backtick and backslash need escaping
 # ------------------------------------------------------
 mdv2_code_escape() {
     local s="$1"
@@ -101,33 +106,56 @@ mdv2_code_escape() {
 }
 
 LINUX_VER_ESC="$(mdv2_code_escape "$LINUX_VER")"
+KERNEL_BRANCH_ESC="$(mdv2_code_escape "$KERNEL_BRANCH")"
+BUILD_SYSTEM_ESC="$(mdv2_code_escape "$BUILD_SYSTEM_DISPLAY")"
+COMPILER_ESC="$(mdv2_code_escape "$COMPILER_DISPLAY")"
+LTO_ESC="$(mdv2_code_escape "${ENABLE_LTO:-NONE}")"
 ROOT_SOLUTION_ESC="$(mdv2_code_escape "$ROOT_SOLUTION_DISPLAY")"
 SUSFS_VER_ESC="$(mdv2_code_escape "$SUSFS_VER")"
-MOUNTLESS_ENGINE_ESC="$(mdv2_code_escape "$MOUNTLESS_ENGINE_DISPLAY")"
-KERNEL_BRANCH_ESC="$(mdv2_code_escape "$KERNEL_BRANCH")"
-BUILD_SYSTEM_DISPLAY_ESC="$(mdv2_code_escape "$BUILD_SYSTEM_DISPLAY")"
-COMPILER_DISPLAY_ESC="$(mdv2_code_escape "$COMPILER_DISPLAY")"
-LTO_DISPLAY_ESC="$(mdv2_code_escape "${ENABLE_LTO:-NONE}")"
-
-# Backtick-fence with a language tag right after the opening
-# fence — this is what makes Telegram show the "Luminaire"
-# label + Copy Code button on the rendered code block.
-CAPTION="\`\`\`Luminaire
-Linux            : ${LINUX_VER_ESC}
-Root Solution    : ${ROOT_SOLUTION_ESC}
-Susfs            : ${SUSFS_VER_ESC}
-Mountless Engine : ${MOUNTLESS_ENGINE_ESC}
-Branch           : ${KERNEL_BRANCH_ESC}
-Build System     : ${BUILD_SYSTEM_DISPLAY_ESC}
-Compiler         : ${COMPILER_DISPLAY_ESC}
-LTO              : ${LTO_DISPLAY_ESC}
-Date             : $(date +'%d %b %Y')
-\`\`\`"
+MOUNTLESS_ESC="$(mdv2_code_escape "$MOUNTLESS_DISPLAY")"
+REKERNEL_ESC="$(mdv2_code_escape "$REKERNEL_DISPLAY")"
+BBG_ESC="$(mdv2_code_escape "$BBG_DISPLAY")"
+DROIDSPACES_ESC="$(mdv2_code_escape "$DROIDSPACES_DISPLAY")"
+DATE_ESC="$(mdv2_code_escape "$(date +'%d %b %Y')")"
 
 # ------------------------------------------------------
-# Enforce Telegram's 1024-char caption hard limit.
-# Truncate safely and re-close the code fence so MarkdownV2
-# parsing doesn't break on an unterminated code block.
+# Build caption — three blocks separated by newline
+# Block 3 (Add-ons) is skipped if all addons are N/A
+# ------------------------------------------------------
+BLOCK_LUMINAIRE="\`\`\`Luminaire
+Linux        : ${LINUX_VER_ESC}
+Branch       : ${KERNEL_BRANCH_ESC}
+Build System : ${BUILD_SYSTEM_ESC}
+Compiler     : ${COMPILER_ESC}
+LTO          : ${LTO_ESC}
+Date         : ${DATE_ESC}
+\`\`\`"
+
+BLOCK_ROOT="\`\`\`Root Solution
+KSU   : ${ROOT_SOLUTION_ESC}
+SuSFS : ${SUSFS_VER_ESC}
+\`\`\`"
+
+CAPTION="${BLOCK_LUMINAIRE}
+${BLOCK_ROOT}"
+
+# Add-ons block — only if at least one addon is active
+if [ "$MOUNTLESS_DISPLAY" != "N/A" ] || \
+   [ "$REKERNEL_DISPLAY" != "N/A" ] || \
+   [ "$BBG_DISPLAY" != "N/A" ] || \
+   [ "$DROIDSPACES_DISPLAY" != "N/A" ]; then
+    BLOCK_ADDONS="\`\`\`Add-ons
+Mountless Engine : ${MOUNTLESS_ESC}
+Re:Kernel        : ${REKERNEL_ESC}
+BBG              : ${BBG_ESC}
+Droidspaces      : ${DROIDSPACES_ESC}
+\`\`\`"
+    CAPTION="${CAPTION}
+${BLOCK_ADDONS}"
+fi
+
+# ------------------------------------------------------
+# Enforce Telegram's 1024-char caption hard limit
 # ------------------------------------------------------
 CAPTION_LEN=$(printf '%s' "$CAPTION" | wc -m)
 if [ "$CAPTION_LEN" -gt "$TELEGRAM_CAPTION_LIMIT" ]; then
@@ -138,10 +166,7 @@ if [ "$CAPTION_LEN" -gt "$TELEGRAM_CAPTION_LIMIT" ]; then
 fi
 
 # ------------------------------------------------------
-# Send with retries + backoff for transient failures
-# (timeouts, 429 rate-limit, 5xx server errors).
-# 4xx (bad request, e.g. malformed caption) is NOT retried
-# since retrying won't change the outcome.
+# Send with retries + backoff
 # ------------------------------------------------------
 ATTEMPT=1
 SEND_OK=0
@@ -168,7 +193,6 @@ while [ "$ATTEMPT" -le "$TELEGRAM_MAX_RETRIES" ]; do
         break
     fi
 
-    # Decide whether this is worth retrying
     case "$HTTP_CODE" in
         000)
             warn "Telegram send failed: connection/timeout error (${CURL_ERR:-no details}) — will retry"
