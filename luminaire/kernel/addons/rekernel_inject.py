@@ -89,12 +89,11 @@ static int rekernel_unit_open(struct inode *inode, struct file *file)
 \treturn single_open(file, rekernel_unit_show, NULL);
 }
 
-static const struct file_operations rekernel_unit_fops = {
-\t.open    = rekernel_unit_open,
-\t.read    = seq_read,
-\t.llseek  = seq_lseek,
-\t.release = single_release,
-\t.owner   = THIS_MODULE,
+static const struct proc_ops rekernel_unit_fops = {
+\t.proc_open    = rekernel_unit_open,
+\t.proc_read    = seq_read,
+\t.proc_lseek   = seq_lseek,
+\t.proc_release = single_release,
 };
 
 static struct proc_dir_entry *rekernel_dir, *rekernel_unit_entry;
