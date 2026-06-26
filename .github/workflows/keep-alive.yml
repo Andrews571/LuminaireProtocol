@@ -15,10 +15,16 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
             ~/kernel-cache
             ~/.apt-cache
           key: arsenal-__keepalive__
           restore-keys: arsenal-
+
+      - name: "♻️ Touch clang caches"
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/clang-cache
+          key: clang-__keepalive__
+          restore-keys: clang-

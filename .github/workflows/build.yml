@@ -6,10 +6,13 @@ on:
       build_system:
         description: "Build System"
         type: choice
-        default: "MAKE"
+        default: "Kleaf - AOSP"
         options:
-          - "MAKE"
-          - "KLEAF"
+          - "Kleaf - AOSP"
+          - "Make - Cirrus"
+          - "Make - Neutron"
+          - "Make - WeebX"
+          - "Make - Zyc"
       kernel_version:
         description: "Kernel Version"
         type: choice

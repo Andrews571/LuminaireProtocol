@@ -5,7 +5,7 @@ on:
     inputs:
       build_system:
         type: string
-        default: "MAKE"
+        default: "Make - Cirrus"
       vanilla:
         type: boolean
         default: true
@@ -63,11 +63,12 @@ jobs:
       PERSONAL_TOKEN:  ${{ secrets.PERSONAL_TOKEN }}
       USE_KERNEL_CACHE: ${{ inputs.update_arsenal != 'yes' }}
       USE_AK3_CACHE:    ${{ inputs.update_arsenal != 'yes' }}
+      USE_CLANG_CACHE:  ${{ inputs.update_arsenal != 'yes' }}
       KERNEL_VERSION:   ${{ inputs.kernel_version }}
       BUILD_SYSTEM:     ${{ inputs.build_system }}
       # MAKE only — KLEAF uses Bazel cache
-      CCACHE_DIR:       ${{ inputs.build_system == 'MAKE' && format('{0}/.ccache', github.workspace) || '' }}
-      CCACHE_MAXSIZE:   ${{ inputs.build_system == 'MAKE' && '5G' || '' }}
+      CCACHE_DIR:       ${{ startsWith(inputs.build_system, 'Make') && format('{0}/.ccache', github.workspace) || '' }}
+      CCACHE_MAXSIZE:   ${{ startsWith(inputs.build_system, 'Make') && '5G' || '' }}
 
     steps:
       - name: "Checkout"
@@ -100,18 +101,25 @@ jobs:
           matrix_json=$(printf '%s\n' "${variants[@]}" | jq -cs '{include: .}')
           echo "matrix=${matrix_json}" >> $GITHUB_OUTPUT
 
+      - name: "Restore Clang Cache"
+        id: clang-cache
+        if: startsWith(inputs.build_system, 'Make') && inputs.update_arsenal != 'yes'
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/clang-cache
+          key: clang-${{ replace(inputs.build_system, 'Make - ', '') }}
+
       - name: "Restore Arsenal Cache"
         if: inputs.update_arsenal != 'yes'
         uses: actions/cache/restore@v6
         with:
           path: |
-            ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
             ~/kernel-cache
             ~/.apt-cache
-          key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
+          key: arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
 
       - name: "Prepare Arsenal"
         run: bash arsenal.sh
@@ -121,12 +129,33 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
             ~/kernel-cache
             ~/.apt-cache
-          key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
+          key: arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
+
+      - name: "Invalidate Old Clang Cache"
+        if: startsWith(inputs.build_system, 'Make') && inputs.update_arsenal == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+        run: |
+          CACHE_KEY="clang-${{ replace(inputs.build_system, 'Make - ', '') }}"
+          CACHE_ID=$(gh api "/repos/${{ github.repository }}/actions/caches?key=${CACHE_KEY}" \
+            --jq '.actions_caches[0].id // empty' 2>/dev/null || true)
+          if [ -n "$CACHE_ID" ]; then
+            gh api --method DELETE "/repos/${{ github.repository }}/actions/caches/${CACHE_ID}" > /dev/null 2>&1 || true
+            echo "Clang cache invalidated ✅ (${CACHE_KEY})"
+          else
+            echo "No existing clang cache found for ${CACHE_KEY}"
+          fi
+
+      - name: "Save Clang Cache"
+        if: always() && startsWith(inputs.build_system, 'Make') && steps.clang-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/clang-cache
+          key: clang-${{ replace(inputs.build_system, 'Make - ', '') }}
 
       - name: "Cleanup Old Arsenal"
         if: always()
@@ -135,7 +164,7 @@ jobs:
         run: |
           CACHES=$(gh api \
             "/repos/${{ github.repository }}/actions/caches?per_page=100" \
-            --jq ".actions_caches[] | select(.key | startswith(\"arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-\")) | select(.key != \"arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}\") | .id")
+            --jq ".actions_caches[] | select(.key | startswith(\"arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-\")) | select(.key != \"arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}\") | .id")
           
           if [ -z "$CACHES" ]; then
             echo "No old cache entries found"
@@ -158,7 +187,7 @@ jobs:
   Start-Build:
     name: "Build Kernel (${{ matrix.root_solution }}${{ matrix.susfs && '+SUSFS' || '' }})"
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.build_system == 'KLEAF' && 90 || 60 }}
+    timeout-minutes: ${{ inputs.build_system == 'Kleaf - AOSP' && 90 || 60 }}
     needs: prepare-matrix
     strategy:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
@@ -171,17 +200,18 @@ jobs:
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
       USE_KERNEL_CACHE:            "true"
-      USE_AK3_CACHE:                "true"
-      ROOT_SOLUTION:                ${{ matrix.root_solution }}
-      SUSFS_ENABLED:                ${{ matrix.susfs }}
+      USE_AK3_CACHE:               "true"
+      USE_CLANG_CACHE:             "true"
+      ROOT_SOLUTION:               ${{ matrix.root_solution }}
+      SUSFS_ENABLED:               ${{ matrix.susfs }}
       KERNEL_VERSION:              ${{ inputs.kernel_version }}
       ENABLE_LTO:                  ${{ inputs.enable_lto }}
       WARMING_MODE:                ${{ inputs.warming_mode }}
       BUILD_SYSTEM:                ${{ inputs.build_system }}
       ADDONS:                      ${{ inputs.addons }}
       # MAKE only — KLEAF uses Bazel internal cache
-      CCACHE_DIR:                  ${{ inputs.build_system == 'MAKE' && format('{0}/.ccache', github.workspace) || '' }}
-      CCACHE_MAXSIZE:              ${{ inputs.build_system == 'MAKE' && '5G' || '' }}
+      CCACHE_DIR:                  ${{ startsWith(inputs.build_system, 'Make') && format('{0}/.ccache', github.workspace) || '' }}
+      CCACHE_MAXSIZE:              ${{ startsWith(inputs.build_system, 'Make') && '5G' || '' }}
 
     steps:
       - name: "Checkout"
@@ -203,20 +233,26 @@ jobs:
         with:
           swap-size-gb: 12
 
+      - name: "Restore Clang Cache"
+        if: startsWith(inputs.build_system, 'Make')
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/clang-cache
+          key: clang-${{ replace(inputs.build_system, 'Make - ', '') }}
+
       - name: "Restore Arsenal Cache"
         uses: actions/cache/restore@v6
         with:
           path: |
-            ~/clang-cache
             ~/ccache-bin
             ~/ak3-cache
             ~/kernel-cache
             ~/.apt-cache
-          key: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: arsenal-${{ inputs.build_system }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
+          key: arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: arsenal-${{ startsWith(inputs.build_system, 'Make') && 'MAKE' || 'KLEAF' }}-${{ inputs.kernel_version }}-${{ github.ref_name }}-
 
       - name: "Restore ccache"
-        if: inputs.build_system != 'KLEAF'
+        if: startsWith(inputs.build_system, 'Make')
         uses: ./.github/actions/restore-caches
         with:
           ccache-prefix: ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-
@@ -229,11 +265,11 @@ jobs:
         run: bash build.sh
 
       - name: "Ccache Stats"
-        if: always() && inputs.build_system != 'KLEAF'
+        if: always() && startsWith(inputs.build_system, 'Make')
         run: ~/ccache-bin/ccache --show-stats
 
       - name: "Save ccache"
-        if: always() && inputs.build_system != 'KLEAF'
+        if: always() && startsWith(inputs.build_system, 'Make')
         uses: ./.github/actions/save-caches
         with:
           ccache-prefix: ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ github.ref_name }}-

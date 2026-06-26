@@ -1,46 +1,51 @@
 #!/usr/bin/env bash
 
 # ======================================================
-# 🧰 SETUP — GREENFORCE CLANG
+# 🧰 SETUP — CLANG DISPATCHER (MAKE only)
 # ======================================================
 
-# Kleaf downloads its own AOSP Clang prebuilt — skip
 [ "$BUILD_SYSTEM" = "KLEAF" ] && return 0
 
 CLANG_CACHE_DIR="${HOME}/clang-cache"
 
-if [ -d "${CLANG_CACHE_DIR}/bin" ]; then
-    log "Restoring Clang from cache..."
+if [ "${USE_CLANG_CACHE}" = "true" ] && [ -d "${CLANG_CACHE_DIR}/bin" ]; then
+    log "Restoring Clang from cache (${CLANG_VARIANT})..."
     mkdir -p "$TOOL_CLANG_DIR"
     cp -a "${CLANG_CACHE_DIR}/." "${TOOL_CLANG_DIR}/"
     log "Clang restored ✅"
 else
-    log "Downloading Greenforce Clang..."
-    download_clang() {
-        wget --no-verbose -O- https://raw.githubusercontent.com/greenforce-project/greenforce_clang/refs/heads/main/get_clang.sh \
-            | bash
-    }
-    retry 3 run_quiet download_clang || error "Clang download failed! (see output above)"
-    [ -d "${TOOL_CLANG_DIR}/bin" ] || error "Clang directory missing after download — get_clang.sh may have failed silently!"
+    mkdir -p "$TOOL_CLANG_DIR"
+    CLANG_VARIANT_SCRIPT="${LUMINAIRE_PATCH_DIR}/setup/clang/${CLANG_VARIANT}.sh"
+    [ -f "$CLANG_VARIANT_SCRIPT" ] || error "Clang variant script not found: ${CLANG_VARIANT}"
+    source "$CLANG_VARIANT_SCRIPT"
+    [ -d "${TOOL_CLANG_DIR}/bin" ] || error "Clang binary missing after download — ${CLANG_VARIANT} script may have failed!"
     mkdir -p "$CLANG_CACHE_DIR"
     cp -a "${TOOL_CLANG_DIR}/." "${CLANG_CACHE_DIR}/"
-    log "Clang downloaded and cached ✅"
+    log "Clang cached ✅"
 fi
 
 set +o pipefail
-CLANG_VER=$(${TOOL_CLANG_DIR}/bin/clang --version 2>&1 | head -1 || true)
-CIRRUS_CLANG_VER=$(${TOOL_CLANG_DIR}/bin/clang --version 2>&1 | grep -oP 'clang version \K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+CLANG_VERSION=$("${TOOL_CLANG_DIR}/bin/clang" --version 2>&1 \
+    | grep -oP 'clang version \K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
 set -o pipefail
-if [ -n "$CIRRUS_CLANG_VER" ]; then
-    COMPILER_STRING="Cirrus Clang ${CIRRUS_CLANG_VER}"
+
+case "$CLANG_VARIANT" in
+    cirrus)  CLANG_BRAND="Cirrus Clang" ;;
+    neutron) CLANG_BRAND="Neutron Clang" ;;
+    weebx)   CLANG_BRAND="WeebX Clang" ;;
+    zyc)     CLANG_BRAND="ZyC Clang" ;;
+    *)       CLANG_BRAND="${CLANG_VARIANT} Clang" ;;
+esac
+
+if [ -n "$CLANG_VERSION" ]; then
+    COMPILER_STRING="${CLANG_BRAND} ${CLANG_VERSION}"
 else
-    COMPILER_STRING="Cirrus Clang"
-    warn "Could not parse Cirrus Clang version from --version output"
+    COMPILER_STRING="$CLANG_BRAND"
+    warn "Could not parse Clang version from --version output"
 fi
 
-log "Clang ready: ${CLANG_VER}"
-echo "COMPILER_STRING=${COMPILER_STRING}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 export COMPILER_STRING
+echo "COMPILER_STRING=${COMPILER_STRING}" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
 export PATH="${TOOL_CLANG_DIR}/bin:${PATH}"
 
 log "Setting up ccache wrappers..."
@@ -57,4 +62,4 @@ done
 export PATH="${TOOL_CCACHE_WRAPPERS}:${PATH}"
 echo "${TOOL_CCACHE_WRAPPERS}" >> "${GITHUB_PATH:-/dev/null}" 2>/dev/null || true
 echo "${TOOL_CLANG_DIR}/bin" >> "${GITHUB_PATH:-/dev/null}" 2>/dev/null || true
-log "Clang ready | compiler: ${COMPILER_STRING:-N/A} ✅"
+log "Clang ready | ${COMPILER_STRING} ✅"

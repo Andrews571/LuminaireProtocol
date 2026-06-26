@@ -1,9 +1,19 @@
 name: "🔥 Cache Warming"
-run-name: "${{ inputs.kernel_version }} | MAKE"
+run-name: "${{ inputs.kernel_version }} | ${{ inputs.build_system }}"
 
 on:
   workflow_dispatch:
     inputs:
+      build_system:
+        description: "Build System"
+        type: choice
+        default: "Kleaf - AOSP"
+        options:
+          - "Kleaf - AOSP"
+          - "Make - Cirrus"
+          - "Make - Neutron"
+          - "Make - WeebX"
+          - "Make - Zyc"
       kernel_version:
         description: "Kernel Version"
         type: choice
@@ -49,7 +59,7 @@ jobs:
   Luminaire:
     uses: ./.github/workflows/_kernel-build.yml
     with:
-      build_system:   "MAKE"
+      build_system:   ${{ inputs.build_system }}
       vanilla:        ${{ inputs.vanilla }}
       resukisu:       ${{ inputs.resukisu }}
       sukisu:         ${{ inputs.sukisu }}

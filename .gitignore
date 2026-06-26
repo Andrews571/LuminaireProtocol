@@ -3,7 +3,7 @@ workspace/
 out/
 
 # Toolchain & compilers
-greenforce-clang/
+/clang/
 ccache-bin/
 ccache-wrappers/
 
