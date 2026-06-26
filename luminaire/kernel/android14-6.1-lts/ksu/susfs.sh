@@ -17,6 +17,7 @@ for _fork in "${SUSFS_INCOMPATIBLE_FORKS[@]}"; do
     fi
 done
 
+KSU_DIR="${KSU_DIR:-${KERNEL_SRC}/KernelSU}"
 SUSFS_BRANCH="gki-android14-6.1"
 SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
 SUSFS_DIR="/tmp/susfs4ksu"

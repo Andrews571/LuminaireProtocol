@@ -187,9 +187,8 @@ run_build() {
 
 run_release() {
     echo "::group::🚀 Release"
-    for script in "${LUMINAIRE_PATCH_DIR}/release/"*.sh; do
-        source "$script" || error "Release failed: $(basename "$script")"
-    done
+    source "${LUMINAIRE_PATCH_DIR}/release/anykernel.sh" || error "Release failed: anykernel.sh"
+    source "${LUMINAIRE_PATCH_DIR}/release/telegram.sh"  || error "Release failed: telegram.sh"
     echo "::endgroup::"
 }
 

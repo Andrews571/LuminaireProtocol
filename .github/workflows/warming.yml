@@ -1,16 +1,9 @@
 name: "🔥 Cache Warming"
-run-name: "${{ inputs.kernel_version }} | ${{ inputs.build_system }}"
+run-name: "${{ inputs.kernel_version }} | MAKE"
 
 on:
   workflow_dispatch:
     inputs:
-      build_system:
-        description: "Build System"
-        type: choice
-        default: "MAKE"
-        options:
-          - "MAKE"
-          - "KLEAF"
       kernel_version:
         description: "Kernel Version"
         type: choice
@@ -40,22 +33,6 @@ on:
         options:
           - "enable"
           - "disable"
-      mountless_engine:
-        description: "Mountless Engine"
-        type: choice
-        default: "none"
-        options:
-          - "none"
-          - "nomount"
-          - "zeromount"
-      bbg:
-        description: "BBG (Baseband Guard)"
-        type: boolean
-        default: true
-      droidspaces:
-        description: "Droidspaces"
-        type: boolean
-        default: false
       update_arsenal:
         description: "Update Arsenal"
         type: choice
@@ -63,14 +40,6 @@ on:
         options:
           - "yes"
           - "no"
-      enable_lto:
-        description: "⚠️ LTO"
-        type: choice
-        default: "NONE"
-        options:
-          - "NONE"
-          - "THIN"
-          - "FULL"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,19 +49,13 @@ jobs:
   Luminaire:
     uses: ./.github/workflows/_kernel-build.yml
     with:
-      build_system:   ${{ inputs.build_system }}
+      build_system:   "MAKE"
       vanilla:        ${{ inputs.vanilla }}
       resukisu:       ${{ inputs.resukisu }}
       sukisu:         ${{ inputs.sukisu }}
       susfs:          ${{ inputs.susfs == 'enable' }}
       kernel_version: ${{ inputs.kernel_version }}
       update_arsenal: ${{ inputs.update_arsenal }}
-      enable_lto:     ${{ inputs.enable_lto }}
       warming_mode:   "true"
-      addons:         "${{ inputs.bbg && 'bbg' || '' }}${{ inputs.droidspaces && ',droidspaces' || '' }}${{ inputs.mountless_engine != 'none' && format(',{0}', inputs.mountless_engine) || '' }}"
     secrets:
-      PERSONAL_TOKEN:              ${{ secrets.PERSONAL_TOKEN }}
-      TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
-      TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
-      TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
+      PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}

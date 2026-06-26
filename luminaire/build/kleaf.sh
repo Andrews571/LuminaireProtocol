@@ -68,7 +68,7 @@ AOSP_CLANG_BIN=$(find "${KERNEL_DIR}/prebuilts/clang/host/linux-x86" \
     -maxdepth 3 -name clang -path "*/bin/clang" 2>/dev/null | head -1)
 if [ -n "$AOSP_CLANG_BIN" ]; then
     set +o pipefail
-    AOSP_CLANG_VER=$("$AOSP_CLANG_BIN" -v 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -1 || true)
+    AOSP_CLANG_VER=$("$AOSP_CLANG_BIN" --version 2>&1 | grep -oP 'clang version \K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
     set -o pipefail
     if [ -n "$AOSP_CLANG_VER" ]; then
         COMPILER_STRING="AOSP Clang ${AOSP_CLANG_VER}"
