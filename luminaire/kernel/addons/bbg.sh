@@ -17,10 +17,20 @@ python3 "$PATCHER" "${KERNEL_SRC}/security/Kconfig" \
 
 cd "${ROOT_DIR}"
 
-log "Enabling CONFIG_BBG..."
-if [ "$BUILD_SYSTEM" = "KLEAF" ]; then
-    echo "CONFIG_BBG=y" >> "${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"
+DEFCONFIG_FILE="${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"
+
+log "Patching CONFIG_LSM in gki_defconfig to include baseband_guard..."
+if grep -q "^CONFIG_LSM=" "$DEFCONFIG_FILE"; then
+    if grep -q "baseband_guard" "$DEFCONFIG_FILE"; then
+        log "baseband_guard already in CONFIG_LSM, skipping"
+    else
+        sed -i 's/^CONFIG_LSM="\?\(.*[^"]\)"\?$/CONFIG_LSM=\1,baseband_guard/' "$DEFCONFIG_FILE"
+        log "baseband_guard appended to CONFIG_LSM ✅"
+    fi
 else
-    "${KERNEL_SRC}/scripts/config" --file "${OUT_DIR}/.config" --enable CONFIG_BBG
+    warn "CONFIG_LSM not found in gki_defconfig — BBG may fail at build time"
 fi
+
+log "Enabling CONFIG_BBG..."
+echo "CONFIG_BBG=y" >> "$DEFCONFIG_FILE"
 log "BBG setup complete ✅"
