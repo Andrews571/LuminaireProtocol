@@ -119,8 +119,7 @@ DROIDSPACES_ESC="$(mdv2_code_escape "$DROIDSPACES_DISPLAY")"
 DATE_ESC="$(mdv2_code_escape "$(date +'%d %b %Y')")"
 
 # ------------------------------------------------------
-# Build caption — three blocks separated by newline
-# Block 3 (Add-ons) is skipped if all addons are N/A
+# Build caption
 # ------------------------------------------------------
 BLOCK_LUMINAIRE="\`\`\`Luminaire
 Linux        : ${LINUX_VER_ESC}
@@ -130,12 +129,10 @@ Compiler     : ${COMPILER_ESC}
 LTO          : ${LTO_ESC}
 Date         : ${DATE_ESC}
 \`\`\`"
-
 BLOCK_ROOT="\`\`\`RootSolution
 KSU   : ${ROOT_SOLUTION_ESC}
 SuSFS : ${SUSFS_VER_ESC}
 \`\`\`"
-
 BLOCK_ADDONS="\`\`\`Add-ons
 Mountless Engine : ${MOUNTLESS_ESC}
 Re:Kernel        : ${REKERNEL_ESC}
