@@ -54,6 +54,10 @@ on:
         description: "BBG (Baseband Guard)"
         type: boolean
         default: true
+      rekernel:
+        description: "Re:Kernel (Binder/Signal Netlink)"
+        type: boolean
+        default: false
       droidspaces:
         description: "Droidspaces"
         type: boolean
@@ -95,7 +99,7 @@ jobs:
       update_arsenal:  ${{ inputs.update_arsenal }}
       enable_lto:      ${{ inputs.enable_lto }}
       warming_mode:    ${{ inputs.warming_mode && 'true' || 'false' }}
-      addons:          "${{ inputs.bbg && 'bbg' || '' }}${{ inputs.droidspaces && ',droidspaces' || '' }}${{ inputs.mountless_engine != 'none' && format(',{0}', inputs.mountless_engine) || '' }}"
+      addons:          "${{ inputs.bbg && 'bbg' || '' }}${{ inputs.rekernel && ',rekernel' || '' }}${{ inputs.droidspaces && ',droidspaces' || '' }}${{ inputs.mountless_engine != 'none' && format(',{0}', inputs.mountless_engine) || '' }}"
     secrets:
       PERSONAL_TOKEN:              ${{ secrets.PERSONAL_TOKEN }}
       TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
