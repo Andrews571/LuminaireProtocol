@@ -30,6 +30,9 @@ on:
       warming_mode:
         type: string
         default: "false"
+      release_channel:
+        type: string
+        default: "false"
       addons:
         type: string
         default: ""
@@ -43,6 +46,8 @@ on:
       TELEGRAM_THREAD_ID_ARTIFACT:
         required: false
       TELEGRAM_THREAD_ID_LOG:
+        required: false
+      TELEGRAM_CHANNEL_ID:
         required: false
 
 env:
@@ -190,6 +195,7 @@ jobs:
       TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
+      TELEGRAM_CHANNEL_ID:         ${{ secrets.TELEGRAM_CHANNEL_ID }}
       USE_KERNEL_CACHE:            "true"
       USE_AK3_CACHE:               "true"
       USE_CLANG_CACHE:             "true"
@@ -198,6 +204,7 @@ jobs:
       KERNEL_VERSION:              ${{ inputs.kernel_version }}
       ENABLE_LTO:                  ${{ inputs.enable_lto }}
       WARMING_MODE:                ${{ inputs.warming_mode }}
+      RELEASE_CHANNEL:             ${{ inputs.release_channel }}
       BUILD_SYSTEM:                ${{ inputs.build_system }}
       ADDONS:                      ${{ inputs.addons }}
       # MAKE only — KLEAF uses Bazel internal cache

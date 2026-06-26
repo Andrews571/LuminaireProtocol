@@ -84,6 +84,10 @@ on:
         options:
           - "false"
           - "true"
+      release_channel:
+        description: "Send to release channel"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -102,6 +106,7 @@ jobs:
       update_arsenal:  ${{ inputs.update_arsenal }}
       enable_lto:      ${{ inputs.enable_lto }}
       warming_mode:    ${{ inputs.warming_mode }}
+      release_channel: ${{ inputs.release_channel && 'true' || 'false' }}
       addons:          "${{ inputs.bbg && 'bbg' || '' }}${{ inputs.rekernel && ',rekernel' || '' }}${{ inputs.droidspaces && ',droidspaces' || '' }}${{ inputs.mountless_engine != 'none' && format(',{0}', inputs.mountless_engine) || '' }}"
     secrets:
       PERSONAL_TOKEN:              ${{ secrets.PERSONAL_TOKEN }}
@@ -109,3 +114,4 @@ jobs:
       TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_THREAD_ID_ARTIFACT: ${{ secrets.TELEGRAM_THREAD_ID_ARTIFACT }}
       TELEGRAM_THREAD_ID_LOG:      ${{ secrets.TELEGRAM_THREAD_ID_LOG }}
+      TELEGRAM_CHANNEL_ID:         ${{ secrets.TELEGRAM_CHANNEL_ID }}
