@@ -5,9 +5,10 @@
 # ======================================================
 
 MODULE_VERSION_FILE="${KERNEL_SRC}/kernel/module/version.c"
+PATCHER="${LUMINAIRE_PATCH_DIR}/kernel/core/module_bypass_patch.py"
+
 if [ -f "$MODULE_VERSION_FILE" ]; then
-    sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' \
-        "$MODULE_VERSION_FILE" \
-        && log "Module version bypass applied ✅" \
-        || log "Module version bypass: pattern not found"
+    python3 "$PATCHER" "$MODULE_VERSION_FILE" \
+        || error "Module version bypass: patch script failed!"
+    log "Module version bypass applied ✅"
 fi
