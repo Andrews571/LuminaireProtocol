@@ -61,7 +61,6 @@ def build_blocks(env):
     block_luminaire = (
         "```Luminaire\n"
         f"Linux        : {linux_ver}\n"
-        f"Branch       : {kernel_branch}\n"
         f"Build System : {build_system}\n"
         f"Compiler     : {compiler}\n"
         f"LTO          : {lto}\n"
@@ -69,7 +68,7 @@ def build_blocks(env):
         "```"
     )
     block_root = (
-        "```RootSolution\n"
+        "```Root-Solution\n"
         f"KSU   : {root_solution}\n"
         f"SuSFS : {susfs_ver}\n"
         "```"
