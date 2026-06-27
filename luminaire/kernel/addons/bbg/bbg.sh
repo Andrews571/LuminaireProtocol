@@ -20,7 +20,9 @@ cd "${ROOT_DIR}"
 DEFCONFIG_FILE="${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"
 
 log "Enabling CONFIG_BBG..."
-echo "CONFIG_BBG=y" >> "$DEFCONFIG_FILE"
+if ! grep -q "^CONFIG_BBG=y" "$DEFCONFIG_FILE"; then
+    echo "CONFIG_BBG=y" >> "$DEFCONFIG_FILE"
+fi
 
 export BBG_ENABLED=true
 
