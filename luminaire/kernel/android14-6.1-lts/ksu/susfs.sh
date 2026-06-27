@@ -40,12 +40,29 @@ KERNEL_PATCH="${SUSFS_DIR}/kernel_patches/50_add_susfs_in_gki-android14-6.1.patc
 if patch -p1 --fuzz=3 --dry-run --reverse -d "$KERNEL_SRC" < "$KERNEL_PATCH" > /dev/null 2>&1; then
     log "SuSFS kernel patch already applied, skipping."
 else
+    # Pre-patch: sublevel >= 157 adds #include <trace/hooks/blk.h> to namespace.c
+    # which shifts context and causes hunk #1 to fail. Remove it temporarily so
+    # the patch can match, then restore after.
+    if [ "${SUBLEVEL:-0}" -ge 157 ]; then
+        log "Pre-patch: removing blk.h from namespace.c for context match (sublevel ${SUBLEVEL})..."
+        sed -i '/^#include <trace\/hooks\/blk\.h>$/d' "${KERNEL_SRC}/fs/namespace.c"
+    fi
+
     patch -p1 --fuzz=3 --forward -d "$KERNEL_SRC" < "$KERNEL_PATCH" \
         && log "SuSFS kernel patch applied ✅" \
         || warn "SuSFS kernel patch: some hunks failed — continuing"
+
+    # Post-patch: restore blk.h if it was removed and patch didn't re-add it
+    if [ "${SUBLEVEL:-0}" -ge 157 ] && ! grep -qF '#include <trace/hooks/blk.h>' "${KERNEL_SRC}/fs/namespace.c"; then
+        log "Post-patch: restoring blk.h to namespace.c..."
+        sed -i '/^#include "internal\.h"$/a #include <trace\/hooks\/blk.h>' "${KERNEL_SRC}/fs/namespace.c"
+    fi
+
+    # Cleanup any leftover .rej files
+    find "$KERNEL_SRC" -name "*.rej" -delete 2>/dev/null || true
 fi
 
-log "Fixing namespace.c susfs declarations..."
+log "Fixing namespace.c susfs declarations (safety fallback)..."
 python3 "${PATCHER_DIR}/susfs_fix_namespace.py" "${KERNEL_SRC}/fs/namespace.c" \
     || error "SuSFS: namespace.c fix failed!"
 log "namespace.c fixed ✅"
