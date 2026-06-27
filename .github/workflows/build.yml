@@ -136,16 +136,18 @@ jobs:
 
       - name: "Build Variant Matrix"
         id: set
+        env:
+          SUSFS_ENABLED: ${{ inputs.susfs == 'enable' }}
         run: |
-          if ${{ inputs.sukisu }} && ${{ inputs.susfs == 'enable' }}; then
+          if ${{ inputs.sukisu }} && [ "$SUSFS_ENABLED" = "true" ]; then
             echo "::error::SukiSU-Ultra is incompatible with SuSFS (hook architecture conflict). Disable SuSFS or switch to ReSukiSU."
             exit 1
           fi
 
           variants=()
-          ${{ inputs.vanilla }}  && variants+=('{\"root_solution\":\"VANILLA\",\"susfs\":false}')
-          ${{ inputs.resukisu }} && variants+=('{\"root_solution\":\"RESUKISU\",\"susfs\":${{ inputs.susfs == 'enable' }}}')
-          ${{ inputs.sukisu }}   && variants+=('{\"root_solution\":\"SUKISU\",\"susfs\":false}')
+          ${{ inputs.vanilla }}  && variants+=("{\"root_solution\":\"VANILLA\",\"susfs\":false}")
+          ${{ inputs.resukisu }} && variants+=("{\"root_solution\":\"RESUKISU\",\"susfs\":${SUSFS_ENABLED}}")
+          ${{ inputs.sukisu }}   && variants+=("{\"root_solution\":\"SUKISU\",\"susfs\":false}")
 
           if [ ${#variants[@]} -eq 0 ]; then
             echo "No root solutions selected!"
