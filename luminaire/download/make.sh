@@ -10,6 +10,9 @@ if [ "${USE_KERNEL_CACHE}" = "true" ] && [ -d "${HOME}/kernel-cache/common" ]; t
     log "Kernel source restored ✅"
 else
     log "Cloning kernel source..."
+    git config --global http.connectTimeout 30
+    git config --global http.lowSpeedLimit 1000
+    git config --global http.lowSpeedTime 30
     retry 3 run_quiet git clone -q --depth=1 \
         -b "$KERNEL_BRANCH" \
         https://github.com/chainonyourdoor/android_kernel_common-${KERNEL_VERSION} \

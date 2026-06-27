@@ -36,6 +36,11 @@ else
 fi
 
 export CCACHE_COMPILER="${TOOL_CLANG_DIR}/bin/clang"
+# Note: TOOL_CLANG_DIR/bin/clang is not yet on disk at this point —
+# 03_clang.sh downloads it next. CCACHE_COMPILER is read by ccache at
+# compile time (not at export time), so this is safe as long as clang
+# is in place before any make invocation. The || check in 03_clang.sh
+# guarantees that.
 export CCACHE_BASEDIR="$KERNEL_SRC"
 export CCACHE_IS_KERNEL_COMPILING="true"
 export CCACHE_COMPRESS=1

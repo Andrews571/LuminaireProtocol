@@ -20,9 +20,17 @@ def main():
         content = content.replace(INCLUDE_INSIDE, '')
         lines = content.split('\n')
         insert_after = 0
-        for i, line in enumerate(lines[:60]):
-            if line.startswith('#include'):
+        # Scan all lines (not just first 60) to find last #include in header section.
+        # Stop at first non-preprocessor, non-blank, non-comment line to avoid
+        # inserting past the include block into function bodies.
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith('#include'):
                 insert_after = i
+            elif insert_after > 0 and stripped and not stripped.startswith('//') \
+                    and not stripped.startswith('/*') and not stripped.startswith('*') \
+                    and not stripped.startswith('#'):
+                break
         lines.insert(insert_after + 1,
                      '#ifdef CONFIG_ZEROMOUNT\n'
                      '#include <linux/zeromount.h>\n'

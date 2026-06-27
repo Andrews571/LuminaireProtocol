@@ -35,6 +35,7 @@ else
     patch -p1 --fuzz=10 --forward -d "$KERNEL_SRC" < "$NOMOUNT_PATCH" \
         && log "NoMount patch applied ✅" \
         || warn "NoMount patch: some hunks failed — continuing"
+    find "$KERNEL_SRC" -name "*.rej" -delete 2>/dev/null || true
 fi
 
 rm -rf "$NOMOUNT_DIR"

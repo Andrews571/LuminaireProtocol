@@ -147,10 +147,9 @@ run_core() {
 
 run_addons() {
     [ -z "${ADDONS:-}" ] && return 0
-    # Strip leading/trailing commas dan whitespace
-    ADDONS="${ADDONS#,}"
-    ADDONS="${ADDONS%,}"
+    # Strip whitespace, leading/trailing commas, dan koma ganda
     ADDONS="${ADDONS// /}"
+    ADDONS="$(echo "$ADDONS" | sed 's/^,*//;s/,*$//;s/,,*/,/g')"
     [ -z "${ADDONS}" ] && return 0
     echo "::group::⚡ Addons"
     IFS=',' read -ra ADDON_LIST <<< "$ADDONS"
