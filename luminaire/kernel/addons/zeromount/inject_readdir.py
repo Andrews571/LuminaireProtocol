@@ -128,8 +128,10 @@ def main():
         )
         sys.exit(1)
 
-    # Search within a reasonable window after getdents_idx
-    window = lines[getdents_idx : getdents_idx + 60]
+    # Search within a generous window after getdents_idx — dynamic enough
+    # to handle upstream readdir.c growing without hardcoded line limits
+    SEARCH_WINDOW = 120
+    window = lines[getdents_idx : getdents_idx + SEARCH_WINDOW]
 
     # ------------------------------------------------------------------ #
     # 3. Inject initial_count + MAGIC_POS check after fdget_pos block
@@ -154,7 +156,7 @@ def main():
     lines.insert(abs_fdget, FDGET_INJECT)
 
     # Recalculate window after insert
-    window = lines[getdents_idx : getdents_idx + 70]
+    window = lines[getdents_idx : getdents_idx + SEARCH_WINDOW]
 
     # ------------------------------------------------------------------ #
     # 4. Inject MAGIC_POS early-exit before iterate_dir
@@ -185,7 +187,7 @@ def main():
     lines.insert(abs_iterate_after, ITERATE_INJECT_AFTER)
 
     # Recalculate window after inserts
-    window = lines[getdents_idx : getdents_idx + 80]
+    window = lines[getdents_idx : getdents_idx + SEARCH_WINDOW]
 
     # ------------------------------------------------------------------ #
     # 5. Inject zm_out: label before fdput_pos(f)

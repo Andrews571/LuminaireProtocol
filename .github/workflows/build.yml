@@ -121,25 +121,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: "Setup GPG signing"
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          git config --global user.signingkey D01D47B74C4CD13A
-          git config --global commit.gpgsign true
-          git config --global user.name "chainonyourdoor"
-          git config --global user.email "chainonyourdoor@gmail.com"
-
-      - name: "Free Disk Space"
-        uses: jlumbroso/free-disk-space@main
+        uses: ./.github/actions/setup-gpg
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          docker-images: false
-          swap-storage: false
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: "Build Variant Matrix"
         id: set
@@ -245,7 +229,7 @@ jobs:
   Start-Build:
     name: "Build Kernel (${{ matrix.root_solution }}${{ matrix.susfs && '+SUSFS' || '' }})"
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.build_system == 'Kleaf - AOSP' && 90 || 60 }}
+    timeout-minutes: 90
     needs: prepare-matrix
     strategy:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
@@ -276,14 +260,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: "Setup GPG signing"
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          git config --global user.signingkey D01D47B74C4CD13A
-          git config --global commit.gpgsign true
-          git config --global user.name "chainonyourdoor"
-          git config --global user.email "chainonyourdoor@gmail.com"
+        uses: ./.github/actions/setup-gpg
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: "Free Disk Space"
         uses: jlumbroso/free-disk-space@main

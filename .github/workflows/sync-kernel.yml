@@ -122,6 +122,11 @@ jobs:
           VERSION=$(grep '^VERSION = ' kernel/common/Makefile | awk '{print $3}')
           PATCHLEVEL=$(grep '^PATCHLEVEL = ' kernel/common/Makefile | awk '{print $3}')
           SUBLEVEL=$(grep '^SUBLEVEL = ' kernel/common/Makefile | awk '{print $3}')
+
+          [ -z "$VERSION" ]    && echo "::error::VERSION not found in Makefile" && exit 1
+          [ -z "$PATCHLEVEL" ] && echo "::error::PATCHLEVEL not found in Makefile" && exit 1
+          [ -z "$SUBLEVEL" ]   && echo "::error::SUBLEVEL not found in Makefile" && exit 1
+
           echo "KERNEL_VER=${VERSION}.${PATCHLEVEL}.${SUBLEVEL}" >> $GITHUB_OUTPUT
           echo "Kernel version: ${VERSION}.${PATCHLEVEL}.${SUBLEVEL}"
 

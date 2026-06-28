@@ -52,7 +52,15 @@ main() {
 
 run_setup() {
     echo "::group::📦 Setup"
-    for script in "${LUMINAIRE_PATCH_DIR}/setup/"*.sh; do
+    local setup_dir="${LUMINAIRE_PATCH_DIR}/setup"
+    local scripts=(
+        "${setup_dir}/00_paths.sh"
+        "${setup_dir}/01_deps.sh"
+        "${setup_dir}/02_ccache.sh"
+        "${setup_dir}/03_clang.sh"
+    )
+    for script in "${scripts[@]}"; do
+        [ -f "$script" ] || { warn "Setup script not found: $(basename "$script") — skipping"; continue; }
         source "$script" || error "Setup failed: $(basename "$script")"
     done
     echo "::endgroup::"

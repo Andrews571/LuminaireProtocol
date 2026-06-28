@@ -19,9 +19,6 @@ if [ "${USE_AK3_CACHE}" = "true" ] && [ -d "${HOME}/ak3-cache" ]; then
     cp -a "${HOME}/ak3-cache/." "${TOOL_AK3_DIR}/"
     log "AnyKernel3 restored from cache ✅"
 else
-    git config --global http.connectTimeout 30
-    git config --global http.lowSpeedLimit 1000
-    git config --global http.lowSpeedTime 30
     retry 3 run_quiet git clone -q --depth=1 \
         https://github.com/chainonyourdoor/AnyKernel3-Luminaire.git "$TOOL_AK3_DIR" \
         || error "Failed to clone AK3! (see output above)"

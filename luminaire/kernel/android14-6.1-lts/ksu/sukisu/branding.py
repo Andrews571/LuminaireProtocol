@@ -15,7 +15,7 @@ def main():
     old2 = 'ccflags-y += -DKSU_VERSION_FULL=\\\"$(KSU_VERSION_FULL)\\\"'
     new2 = "ccflags-y += -DKSU_VERSION_FULL='\"$(KSU_VERSION_FULL)\"'"
 
-    if "Luminaire" in content:
+    if "KSU_VERSION_FULL := $(KSU_VERSION_FULL) Luminaire" in content:
         print("Branding already applied, skipping.")
         sys.exit(0)
 

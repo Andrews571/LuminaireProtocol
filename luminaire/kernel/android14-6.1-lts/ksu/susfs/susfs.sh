@@ -25,6 +25,9 @@ PATCHER_DIR="${LUMINAIRE_PATCH_DIR}/kernel/android14-6.1-lts/ksu/susfs"
 
 log "Cloning SuSFS (${SUSFS_BRANCH})..."
 [ -d "$SUSFS_DIR" ] && rm -rf "$SUSFS_DIR"
+git config --global http.connectTimeout 30
+git config --global http.lowSpeedLimit 1000
+git config --global http.lowSpeedTime 30
 retry 3 run_quiet git clone -q --depth=1 -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_DIR" \
     || error "SuSFS clone failed after 3 attempts!"
 
