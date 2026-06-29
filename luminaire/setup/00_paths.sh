@@ -37,8 +37,9 @@ KLEAF_MANIFEST_BRANCH="common-${ANDROID_VERSION}-${KERNEL_VERSION}-lts"
 WORKSPACE_DIR="${ROOT_DIR}/workspace"
 KERNEL_DIR="${WORKSPACE_DIR}/kernel"
 KERNEL_SRC="${KERNEL_DIR}/common"
-OUT_DIR="${WORKSPACE_DIR}/out"
-KLEAF_OUT_DIR="${KERNEL_DIR}/bazel-bin/common/kernel_aarch64"
+OUT_DIR="/dev/shm/kout"
+KLEAF_OUT_DIR="/dev/shm/kleaf-out"
+LTO_CACHE_DIR="/dev/shm/ldcache"
 
 # Patch repo paths
 LUMINAIRE_PATCH_DIR="${ROOT_DIR}/luminaire"

@@ -22,15 +22,16 @@ for pkg in "${PKGS[@]}"; do
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
-    log "Installing missing packages: ${MISSING[*]}"
+    log "Installing missing packages (background): ${MISSING[*]}"
     if ls ~/.apt-cache/*.deb &>/dev/null 2>&1; then
         sudo cp -rn ~/.apt-cache/. /var/cache/apt/archives/ 2>/dev/null || true
     fi
     sudo apt-get update -qq
-    sudo apt-get install -y --no-install-recommends "${MISSING[@]}" > /dev/null 2>&1
-    mkdir -p ~/.apt-cache
-    sudo cp /var/cache/apt/archives/*.deb ~/.apt-cache/ 2>/dev/null || true
-    log "Dependencies installed ✅"
+    sudo apt-get install -y --no-install-recommends "${MISSING[@]}" > /dev/null 2>&1 &
+    APT_PID=$!
+    export APT_PID
 else
     log "All dependencies already installed ✅"
+    APT_PID=""
+    export APT_PID
 fi

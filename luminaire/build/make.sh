@@ -21,6 +21,23 @@ MAKE_ARGS=(
     -j"$(nproc --all)"
 )
 
+# Ensure RAM disk output dirs exist
+mkdir -p "$OUT_DIR" "$LTO_CACHE_DIR"
+
+# ThinLTO: wrap ld.lld to redirect cache to RAM disk
+if [ "${ENABLE_LTO:-NONE}" = "THIN" ]; then
+    LD_WRAPPER="${KERNEL_SRC}/ld-wrapper"
+    cat > "$LD_WRAPPER" << 'WRAPPER_EOF'
+#!/usr/bin/env bash
+exec ld.lld "$@" \
+    --thinlto-cache-dir=/dev/shm/ldcache \
+    --thinlto-jobs=$(( $(nproc --all) / 2 ))
+WRAPPER_EOF
+    chmod +x "$LD_WRAPPER"
+    MAKE_ARGS+=(LD="$LD_WRAPPER" HOSTLD="$LD_WRAPPER")
+    log "ThinLTO ld-wrapper enabled (cache: /dev/shm/ldcache) ✅"
+fi
+
 # Defconfig + patches
 touch "${KERNEL_SRC}/.scmversion"
 

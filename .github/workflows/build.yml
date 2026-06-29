@@ -264,15 +264,19 @@ jobs:
         uses: actions/checkout@v7
 
       - name: "Free Disk Space"
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: false
+        run: |
+          sudo mv /usr/share/dotnet        /tmp/_trash_dotnet        2>/dev/null || true
+          sudo mv /usr/local/lib/android   /tmp/_trash_android       2>/dev/null || true
+          sudo mv /opt/ghc                 /tmp/_trash_ghc           2>/dev/null || true
+          sudo mv /usr/lib/jvm             /tmp/_trash_jvm           2>/dev/null || true
+          sudo mv /usr/share/swift         /tmp/_trash_swift         2>/dev/null || true
+          sudo mv /usr/local/share/powershell /tmp/_trash_pwsh      2>/dev/null || true
+          (sudo nice -n 19 ionice -c 3 rm -rf \
+            /tmp/_trash_dotnet /tmp/_trash_android /tmp/_trash_ghc \
+            /tmp/_trash_jvm /tmp/_trash_swift /tmp/_trash_pwsh \
+            /var/lib/docker /var/cache/snapd /home/linuxbrew \
+          ) &
+          mkdir -p /dev/shm/kout /dev/shm/kleaf-out /dev/shm/ldcache
 
       - name: "Setup Swap Space"
         uses: thejerrybao/setup-swap-space@v1
@@ -295,12 +299,29 @@ jobs:
       - name: "Disk Usage"
         run: df -h && du -sh ~/kernel-cache/ 2>/dev/null || true
 
+      - name: "Restore LTO Cache"
+        if: startsWith(inputs.build_system, 'Make') && inputs.enable_lto == 'THIN'
+        uses: actions/cache/restore@v6
+        with:
+          path: /dev/shm/ldcache
+          key: lto-cache-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            lto-cache-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-
+            lto-cache-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-
+
       - name: "Build"
         run: bash build.sh
 
       - name: "Ccache Stats"
         if: always() && startsWith(inputs.build_system, 'Make')
         run: ~/ccache-bin/ccache --show-stats
+
+      - name: "Save LTO Cache"
+        if: startsWith(inputs.build_system, 'Make') && inputs.enable_lto == 'THIN'
+        uses: actions/cache/save@v6
+        with:
+          path: /dev/shm/ldcache
+          key: lto-cache-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: "Save ccache"
         if: always() && startsWith(inputs.build_system, 'Make')
