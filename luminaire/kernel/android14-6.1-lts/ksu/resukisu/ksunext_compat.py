@@ -35,7 +35,7 @@ static int do_ksunext_compat_hook_mode(void __user *arg)
 #elif defined(CONFIG_KSU_MANUAL_HOOK)
     const char *mode = "Manual";
 #elif defined(CONFIG_KSU_SUSFS)
-    const char *mode = "Inline (SusFS)";
+    const char *mode = "Inline (SuSFS)";
 #else
     const char *mode = "Unknown";
 #endif
