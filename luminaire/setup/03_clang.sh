@@ -64,12 +64,6 @@ export PATH="${TOOL_CLANG_DIR}/bin:${PATH}"
 log "Setting up ccache wrappers..."
 mkdir -p "$TOOL_CCACHE_WRAPPERS"
 
-# Export lib path so build/make.sh can inject LD_PRELOAD directly into
-# the make CC= argument — this is the only safe place to set it, since
-# setting LD_PRELOAD in the shell environment before make causes it to
-# be inherited by host tools (fixdep, etc) which then segfault.
-export CCACHE_PRELOAD_LIBS="${ROOT_DIR}/lib/libfakestat.so ${ROOT_DIR}/lib/libfaketimeMT.so"
-
 for tool in $(ls "${TOOL_CLANG_DIR}/bin/" | grep -E "^clang(\+\+)?(-[0-9]+)?$"); do
     REAL_BIN="${TOOL_CLANG_DIR}/bin/${tool}"
     WRAPPER="${TOOL_CCACHE_WRAPPERS}/${tool}"

@@ -55,11 +55,6 @@ mkdir -p "${CCACHE_DIR}"
 echo "sloppiness = file_stat_matches,include_file_ctime,include_file_mtime,pch_defines,file_macro,time_macros" \
     >> "${CCACHE_DIR}/ccache.conf"
 
-# Fixed timestamps for libfakestat/libfaketime — must match what the
-# cc-wrapper injects at compile time so ccache always sees the same mtime
-export FAKESTAT="2025-05-25 12:00:00"
-export FAKETIME="@2025-05-25 13:00:00"
-
 [ -n "${CCACHE_DIR}" ] || error "ccache: CCACHE_DIR is not set!"
 [ -n "${CCACHE_MAXSIZE}" ] || error "ccache: CCACHE_MAXSIZE is not set!"
 

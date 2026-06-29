@@ -48,28 +48,12 @@ for patch in "${VERSION_PATCH_DIR}/patches/"*.patch; do
 done
 
 # Build
-# If libfakestat.so + libfaketimeMT.so are available, create a cc-wrapper
-# that injects LD_PRELOAD only for clang invocations — this freezes source
-# file timestamps so ccache-ECS gets consistent cache hits on fresh runners.
-# LD_PRELOAD must NOT be set in the shell environment before make, as it
-# would be inherited by host tools (fixdep, gcc, etc) causing segfaults.
+# Timestamp freezing via libfakestat/libfaketimeMT is disabled —
+# the prebuilt .so files are not compatible with the GitHub Actions
+# Ubuntu runner libc and cause segfaults in all spawned processes.
+# ccache-ECS still provides significant cache improvement via
+# CCACHE_IS_KERNEL_COMPILING=true and content-hash validation.
 CC_ARG="${TOOL_CCACHE_WRAPPERS}/clang"
-if [ -n "${CCACHE_PRELOAD_LIBS:-}" ] && [ -f "${ROOT_DIR}/lib/libfakestat.so" ]; then
-    CC_WRAPPER="${ROOT_DIR}/cc-faketime-wrapper"
-    cat > "$CC_WRAPPER" << WRAPPER_EOF
-#!/usr/bin/env bash
-exec env \
-    LD_PRELOAD="${CCACHE_PRELOAD_LIBS}" \
-    FAKESTAT="${FAKESTAT}" \
-    FAKETIME="${FAKETIME}" \
-    "${TOOL_CCACHE_WRAPPERS}/clang" "\$@"
-WRAPPER_EOF
-    chmod +x "$CC_WRAPPER"
-    CC_ARG="$CC_WRAPPER"
-    log "Timestamp freezing enabled (libfakestat + libfaketimeMT) ✅"
-else
-    log "Timestamp freezing skipped (libs not found) — using standard ccache wrapper"
-fi
 
 log "Building kernel..."
 START_TIME=$(date +%s)
