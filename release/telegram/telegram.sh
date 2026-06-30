@@ -10,6 +10,10 @@ TELEGRAM_MAX_FILE_BYTES=$((50 * 1024 * 1024))
 CAPTION_BUILDER="${LUMINAIRE_PATCH_DIR}/release/telegram/caption.py"
 BANNER_DIR="${LUMINAIRE_PATCH_DIR}/release/telegram"
 
+# Source non-sensitive Telegram config (chat ID, thread IDs, channel ID)
+# shellcheck source=release/telegram/config.sh
+source "${LUMINAIRE_PATCH_DIR}/release/telegram/config.sh"
+
 # ------------------------------------------------------
 # Guard clauses
 # ------------------------------------------------------
