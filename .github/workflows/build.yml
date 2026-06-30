@@ -1,5 +1,5 @@
 name: "✨ Luminaire Protocol"
-run-name: "${{ inputs.kernel_version }} | ${{ inputs.enable_lto != 'NONE' && format('{0} LTO x ', inputs.enable_lto) || '' }}${{ split(inputs.build_system, ' - ')[1] }} (${{ inputs.warming_mode && 'Warming' || 'Build' }})"
+run-name: "${{ inputs.kernel_version }} | ${{ inputs.enable_lto != 'NONE' && format('{0} LTO x ', inputs.enable_lto) || '' }}${{ contains(inputs.build_system, 'AOSP') && 'AOSP' || contains(inputs.build_system, 'Cirrus') && 'Cirrus' || contains(inputs.build_system, 'Neutron') && 'Neutron' || contains(inputs.build_system, 'WeebX') && 'WeebX' || 'Zyc' }} (${{ inputs.warming_mode && 'Warming' || 'Build' }})"
 
 on:
   workflow_dispatch:
