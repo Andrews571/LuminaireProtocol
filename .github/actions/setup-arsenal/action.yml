@@ -17,9 +17,6 @@ outputs:
   clang-variant:
     description: "Stripped clang variant name (e.g. Cirrus, Neutron)"
     value: ${{ steps.clang-key.outputs.clang_variant }}
-  clang-cache-hit:
-    description: "Whether clang cache was hit"
-    value: ${{ steps.clang-cache.outputs.cache-hit }}
 
 runs:
   using: composite

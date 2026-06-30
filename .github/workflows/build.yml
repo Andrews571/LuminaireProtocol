@@ -176,36 +176,21 @@ jobs:
             ~/.apt-cache
           key: ${{ env.ARSENAL_CACHE_KEY }}
 
-      - name: "Invalidate Old Clang Cache"
-        if: startsWith(inputs.build_system, 'Make') && inputs.update_arsenal == 'yes'
-        env:
-          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-        run: |
-          CACHE_KEY="clang-${{ steps.setup-arsenal.outputs.clang-variant }}"
-          CACHE_ID=$(gh api "/repos/${{ github.repository }}/actions/caches?key=${CACHE_KEY}" \
-            --jq '.actions_caches[0].id // empty' 2>/dev/null || true)
-          if [ -n "$CACHE_ID" ]; then
-            gh api --method DELETE "/repos/${{ github.repository }}/actions/caches/${CACHE_ID}" > /dev/null 2>&1 || true
-            echo "Clang cache invalidated ✅ (${CACHE_KEY})"
-          else
-            echo "No existing clang cache found for ${CACHE_KEY}"
-          fi
-
-      - name: "Invalidate Stale Clang Cache"
-        if: always() && startsWith(inputs.build_system, 'Make') && env.CLANG_CACHE_STALE == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-        run: |
-          gh cache delete "clang-${{ steps.setup-arsenal.outputs.clang-variant }}" \
-            -R "${{ github.repository }}" 2>/dev/null || true
-          echo "Stale clang cache invalidated"
-
       - name: "Save Clang Cache"
-        if: always() && startsWith(inputs.build_system, 'Make') && (steps.setup-arsenal.outputs.clang-cache-hit != 'true' || env.CLANG_CACHE_STALE == 'true')
+        if: always() && startsWith(inputs.build_system, 'Make')
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+        run: |
+          CLANG_KEY="clang-${{ steps.setup-arsenal.outputs.clang-variant }}"
+          gh cache delete "$CLANG_KEY" -R "${{ github.repository }}" 2>/dev/null || true
+          echo "CLANG_CACHE_KEY=${CLANG_KEY}" >> "$GITHUB_ENV"
+
+      - name: "Save Clang Cache (write)"
+        if: always() && startsWith(inputs.build_system, 'Make')
         uses: actions/cache/save@v6
         with:
           path: ~/clang-cache
-          key: clang-${{ steps.setup-arsenal.outputs.clang-variant }}
+          key: ${{ env.CLANG_CACHE_KEY }}
 
   # ======================================================
   # BUILD PER VARIANT (paralel)
