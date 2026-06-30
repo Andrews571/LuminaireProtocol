@@ -231,12 +231,12 @@ jobs:
         if: always() && startsWith(inputs.build_system, 'Make')
         run: ~/ccache-bin/ccache --show-stats
 
-      - name: "Save Build Caches"  # LTO (delete-old + save-new) and ccache, in one step
+      - name: "Save Build Caches"  # LTO and ccache, both to GH Release
         if: always() && startsWith(inputs.build_system, 'Make')
         uses: ./.github/actions/save-build-caches
         with:
-          build-system:  ${{ inputs.build_system }}
-          enable-lto:    ${{ inputs.enable_lto }}
-          lto-key:       lto-cache-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ matrix.root_solution }}-${{ github.ref_name }}
-          ccache-prefix: ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-
-          gh-token:      ${{ secrets.PERSONAL_TOKEN }}
+          build-system:   ${{ inputs.build_system }}
+          enable-lto:     ${{ inputs.enable_lto }}
+          lto-asset-name: lto-data-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ matrix.root_solution }}-${{ github.ref_name }}-lto.tar.zst
+          ccache-prefix:  ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-
+          gh-token:       ${{ secrets.PERSONAL_TOKEN }}

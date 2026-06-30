@@ -1,0 +1,62 @@
+name: "Save LTO Cache"
+description: "Save LTO linker cache (/dev/shm/ldcache) to GitHub Release"
+
+inputs:
+  asset-name:
+    description: "Release asset filename, e.g. lto-data-6.1-Neutron-VANILLA-androidXX-X.X-lts-lto.tar.zst"
+    required: true
+  gh-token:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: "💾 Save LTO cache to Release"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+      run: |
+        ASSET_NAME="${{ inputs.asset-name }}"
+
+        if [ ! -d /dev/shm/ldcache ]; then
+          echo "⚠️ /dev/shm/ldcache not found — skipping save"
+          exit 0
+        fi
+
+        echo "Compressing LTO cache..."
+        sudo tar --zstd -cf "/tmp/${ASSET_NAME}" -C / dev/shm/ldcache || {
+          echo "❌ Failed to compress LTO cache"
+          exit 1
+        }
+
+        SIZE=$(stat -c%s "/tmp/${ASSET_NAME}" 2>/dev/null || echo 0)
+        SIZE_MB=$((SIZE / 1024 / 1024))
+        if [ "$SIZE_MB" -gt 2000 ]; then
+          echo "❌ LTO cache too large (${SIZE_MB}MB > 2000MB limit) — skipping save"
+          rm -f "/tmp/${ASSET_NAME}"
+          exit 1
+        fi
+        echo "✅ LTO cache size: ${SIZE_MB}MB"
+
+        gh release view cache --repo "${{ github.repository }}" > /dev/null 2>&1 || \
+          gh release create cache \
+            --repo "${{ github.repository }}" \
+            --title "Cache Storage" \
+            --notes "Automated cache storage for Luminaire build tools" \
+            --prerelease || {
+          echo "❌ Failed to create cache release"
+          rm -f "/tmp/${ASSET_NAME}"
+          exit 1
+        }
+
+        echo "Uploading LTO cache asset..."
+        gh release upload cache "/tmp/${ASSET_NAME}" \
+          --repo "${{ github.repository }}" \
+          --clobber || {
+          echo "❌ Failed to upload LTO cache"
+          rm -f "/tmp/${ASSET_NAME}"
+          exit 1
+        }
+
+        rm -f "/tmp/${ASSET_NAME}"
+        echo "LTO cache saved ✅"

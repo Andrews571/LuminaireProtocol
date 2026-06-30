@@ -1,0 +1,41 @@
+name: "Restore LTO Cache"
+description: "Restore LTO linker cache (/dev/shm/ldcache) from GitHub Release"
+
+inputs:
+  asset-name:
+    description: "Release asset filename, e.g. lto-data-6.1-Neutron-VANILLA-androidXX-X.X-lts-lto.tar.zst"
+    required: true
+  gh-token:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: "♻️ Restore LTO cache from Release"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+      run: |
+        ASSET_NAME="${{ inputs.asset-name }}"
+
+        if gh release view cache --repo "${{ github.repository }}" > /dev/null 2>&1; then
+          echo "Checking for LTO cache asset: ${ASSET_NAME}"
+          if gh release download cache \
+            --repo "${{ github.repository }}" \
+            --pattern "${ASSET_NAME}" \
+            --dir /tmp/ 2>/dev/null; then
+            if [ -f "/tmp/${ASSET_NAME}" ]; then
+              echo "Restoring LTO cache from ${ASSET_NAME}..."
+              sudo mkdir -p /dev/shm/ldcache
+              sudo tar --zstd -xf "/tmp/${ASSET_NAME}" -C / && {
+                rm -f "/tmp/${ASSET_NAME}"
+                echo "LTO cache restored ✅"
+                exit 0
+              } || {
+                echo "❌ Failed to extract LTO cache — starting fresh"
+                rm -f "/tmp/${ASSET_NAME}"
+              }
+            fi
+          fi
+        fi
+        echo "⚠️ No LTO cache found (${ASSET_NAME}) — starting fresh"

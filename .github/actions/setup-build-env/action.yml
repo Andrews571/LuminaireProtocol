@@ -60,7 +60,7 @@ runs:
 
     - name: "Restore LTO Cache"
       if: startsWith(inputs.build-system, 'Make') && inputs.enable-lto == 'THIN'
-      uses: actions/cache/restore@v6
+      uses: ./.github/actions/restore-lto-cache
       with:
-        path: /dev/shm/ldcache
-        key: lto-cache-${{ inputs.kernel-version }}-${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.root-solution }}-${{ inputs.ref-name }}
+        asset-name: lto-data-${{ inputs.kernel-version }}-${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.root-solution }}-${{ inputs.ref-name }}-lto.tar.zst
+        gh-token:   ${{ inputs.gh-token }}
