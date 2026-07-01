@@ -29,6 +29,19 @@ PATCH_CONTENT=$(curl -LSs --fail --retry 3 --connect-timeout 30 \
 echo "$PATCH_CONTENT" | patch -p1 --forward --no-backup-if-mismatch \
     || error "BBRv3: patch apply failed!"
 
+# Inject DEFAULT_BBR3 directly into gki_defconfig BEFORE make defconfig runs.
+# This must be done here (not via scripts/config) because make olddefconfig
+# resets any post-defconfig changes that violate Kconfig constraints.
+GKI_DEFCONFIG="${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"
+if ! grep -q "CONFIG_DEFAULT_BBR3" "$GKI_DEFCONFIG"; then
+    cat >> "$GKI_DEFCONFIG" << 'EOF'
+# BBRv3 as default TCP congestion (Luminaire)
+CONFIG_TCP_CONG_BBR3=y
+CONFIG_DEFAULT_BBR3=y
+EOF
+    log "BBRv3: DEFAULT_BBR3 injected into gki_defconfig ✅"
+fi
+
 # Extra patch needed for android12-5.10
 if [ "${KERNEL_VERSION}" = "5.10" ]; then
     SYSCTL_PATCH=$(curl -LSs --fail --retry 3 --connect-timeout 30 \
