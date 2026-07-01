@@ -17,10 +17,13 @@ import sys
 
 
 def try_download(url, name, retries=3, backoff=(10, 30, 60)):
-    aria_cmd = f"aria2c -x16 -s16 -k1M -j5 --file-allocation=none -o {name}.tar.gz '{url}'"
+    aria_cmd = [
+        "aria2c", "-x16", "-s16", "-k1M", "-j5", "--file-allocation=none",
+        "-o", f"{name}.tar.gz", url,
+    ]
     for attempt in range(1, retries + 1):
         print(f"  Trying download (attempt {attempt}/{retries}): {url}")
-        result = subprocess.run(aria_cmd, shell=True)
+        result = subprocess.run(aria_cmd)
         if result.returncode == 0:
             return True
         if attempt < retries:
@@ -56,12 +59,18 @@ def sync_project(task):
             return False
 
         try:
-            nproc = int(subprocess.check_output("nproc", shell=True).strip())
+            nproc = int(subprocess.check_output(["nproc"]).strip())
         except Exception:
             nproc = 1
 
-        tar_cmd = f"tar -I 'pigz -p {nproc} -b 256' -x --record-size=1M -C '{path}' {strip} -f '{name}.tar.gz'"
-        subprocess.run(tar_cmd, shell=True, check=True)
+        tar_cmd = [
+            "tar", "-I", f"pigz -p {nproc} -b 256", "-x",
+            "--record-size=1M", "-C", path,
+        ]
+        if strip:
+            tar_cmd.append(strip)
+        tar_cmd += ["-f", f"{name}.tar.gz"]
+        subprocess.run(tar_cmd, check=True)
         os.remove(f"{name}.tar.gz")
 
         top_dir = os.getcwd()
