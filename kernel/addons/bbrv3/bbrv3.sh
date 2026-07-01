@@ -82,26 +82,35 @@ if ! grep -q "luminaire_bbr3_enforce_init" "$TCP_CONG_FILE"; then
 /* ======================================================
  * Luminaire: BBRv3 default-congestion enforcer
  *
- * Re-asserts bbr3 as net.ipv4.tcp_congestion_control on a timer so a
- * vendor init script writing over it during/after boot doesn't stick.
- * Runs independently of any root solution (works on VANILLA too).
+ * Re-asserts bbr3 as net.ipv4.tcp_congestion_control a handful of times
+ * during early boot so a vendor init script writing over it doesn't
+ * stick. Stops after LUMINAIRE_BBR3_ENFORCE_TRIES — this only needs to
+ * win the boot-time race, not fight the user's own later choice (e.g.
+ * manually switching algorithm via a kernel manager app).
  * ====================================================== */
 #ifdef CONFIG_TCP_CONG_BBR3
 #include <linux/workqueue.h>
 
+#define LUMINAIRE_BBR3_ENFORCE_TRIES 5
+
 static struct delayed_work luminaire_bbr3_enforce_work;
+static int luminaire_bbr3_enforce_count;
 
 static void luminaire_bbr3_enforce_fn(struct work_struct *work)
 {
 	tcp_set_default_congestion_control(&init_net, "bbr3");
-	schedule_delayed_work(&luminaire_bbr3_enforce_work, 30 * HZ);
+	if (++luminaire_bbr3_enforce_count < LUMINAIRE_BBR3_ENFORCE_TRIES)
+		schedule_delayed_work(&luminaire_bbr3_enforce_work, 20 * HZ);
 }
 
 static int __init luminaire_bbr3_enforce_init(void)
 {
 	INIT_DELAYED_WORK(&luminaire_bbr3_enforce_work, luminaire_bbr3_enforce_fn);
 	/* First shot after 20s — late enough that it lands after typical
-	 * vendor "on boot"/"on property:sys.boot_completed=1" triggers. */
+	 * vendor "on boot"/"on property:sys.boot_completed=1" triggers.
+	 * Repeats every 20s up to LUMINAIRE_BBR3_ENFORCE_TRIES, covering the
+	 * first ~100s of boot, then stops for good — so it never fights a
+	 * choice the user makes later on. */
 	schedule_delayed_work(&luminaire_bbr3_enforce_work, 20 * HZ);
 	return 0;
 }
