@@ -37,6 +37,16 @@ while IFS= read -r line; do
 done < <(grep -E '^CONFIG_|^# CONFIG_' "${LUMINAIRE_PATCH_DIR}/kernel/config/luminaire.fragment")
 log "Fragment applied ✅"
 
+# BBRv3 — set as default TCP congestion control
+if [ "${BBRV3_ENABLED:-false}" = "true" ]; then
+    for entry in "CONFIG_TCP_CONG_BBR=y" "CONFIG_NET_SCH_FQ=y" 'CONFIG_DEFAULT_TCP_CONG="bbr"'; do
+        key="${entry%%=*}"
+        sed -i "/^${key}[= ]/d;/^# ${key} is not set/d" "$DEFCONFIG"
+        echo "${entry}" >> "$DEFCONFIG"
+    done
+    log "BBRv3: TCP congestion set to bbr ✅"
+fi
+
 log "Running config pass to canonicalize gki_defconfig..."
 cd "$KERNEL_DIR"
 tools/bazel build "${KLEAF_ARGS[@]}" //common:kernel_aarch64_config
