@@ -40,12 +40,11 @@ fi
 
 log "Luminaire defconfig applied ✅"
 
-# BBRv3 — set as default TCP congestion control
+# BBRv3
 if [ "${BBRV3_ENABLED:-false}" = "true" ]; then
-    config --enable  CONFIG_TCP_CONG_BBR
-    config --enable  CONFIG_NET_SCH_FQ
-    config --set-str CONFIG_DEFAULT_TCP_CONG "bbr"
-    log "BBRv3: TCP congestion set to bbr ✅"
+    config --enable CONFIG_TCP_CONG_ADVANCED
+    config --enable CONFIG_TCP_CONG_BBR3
+    log "BBRv3: configs enabled ✅"
 fi
 
 # BBG requires baseband_guard in CONFIG_LSM — patch here because .config
