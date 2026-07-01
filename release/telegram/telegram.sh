@@ -185,7 +185,7 @@ if [ "${RELEASE_CHANNEL:-false}" = "true" ] && [ -n "${TELEGRAM_CHANNEL_ID:-}" ]
         LINKS_DIR="${GITHUB_WORKSPACE}/variant-links"
         mkdir -p "$LINKS_DIR"
         LINK_FILE="${LINKS_DIR}/${VARIANT_KEY}.json"
-        python3 -c "import json,os; f=open('${LINK_FILE}','w'); json.dump({'variant':'${VARIANT_KEY}','link':'${GROUP_MSG_LINK}','linux_ver':os.environ.get('LINUX_VER','N/A'),'kernel_version':os.environ.get('KERNEL_VERSION','')},f); f.close()"
+        echo "{\"variant\":\"${VARIANT_KEY}\",\"link\":\"${GROUP_MSG_LINK}\",\"linux_ver\":\"${LINUX_VER}\",\"kernel_version\":\"${KERNEL_VERSION}\"}" > "${LINK_FILE}"
         log "Variant link saved → ${LINK_FILE} ✅"
     fi
 fi
