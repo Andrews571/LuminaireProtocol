@@ -83,6 +83,10 @@ on:
         description: "🚀 Telegram Release"
         type: boolean
         default: false
+      changelog:
+        description: "Changelog (separate entries with ;)"
+        type: string
+        default: ""
       update_arsenal:
         description: "⚠️ Update Arsenal"
         type: choice
@@ -276,6 +280,8 @@ jobs:
           LUMINAIRE_PATCH_DIR: ${{ github.workspace }}
           LINKS_DIR:           /tmp/variant-links
           KERNEL_VERSION:      ${{ inputs.kernel_version }}
+          ADDONS:              "${{ inputs.bbrv3 && 'bbrv3,' || '' }}${{ inputs.bbg && 'bbg,' || '' }}${{ inputs.rekernel && 'rekernel,' || '' }}${{ inputs.droidspaces && 'droidspaces,' || '' }}${{ inputs.mountless_engine != 'none' && format('{0},', inputs.mountless_engine) || '' }}"
+          CHANGELOG:           ${{ inputs.changelog }}
           GITHUB_SHA:          ${{ github.sha }}
           GITHUB_SERVER_URL:   ${{ github.server_url }}
           GITHUB_REPOSITORY:   ${{ github.repository }}

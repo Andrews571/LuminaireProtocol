@@ -5,7 +5,9 @@
 # ======================================================
 
 TELEGRAM_CHAT_ID="-1004391786664"
-TELEGRAM_GROUP_USERNAME="LuminaireCI"
+TELEGRAM_CI_GROUP="LuminaireCI"       # bot notifications (Artifact/Event topics)
+TELEGRAM_GROUP="LuminaireLab"         # community discussion group
+TELEGRAM_CHANNEL="LuminaireGKI"       # public channel username (for t.me links)
 # CI Artifact
 TELEGRAM_THREAD_ID_ARTIFACT="3"
 

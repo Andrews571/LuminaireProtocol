@@ -181,7 +181,7 @@ if [ "${RELEASE_CHANNEL:-false}" = "true" ] && [ -n "${TELEGRAM_CHANNEL_ID:-}" ]
             VARIANT_KEY="${ROOT_SOLUTION}_SUSFS"
         fi
 
-        GROUP_MSG_LINK="https://t.me/${TELEGRAM_GROUP_USERNAME}/${GROUP_MESSAGE_ID}"
+        GROUP_MSG_LINK="https://t.me/${TELEGRAM_CI_GROUP}/${GROUP_MESSAGE_ID}"
 
         LINKS_DIR="${GITHUB_WORKSPACE}/variant-links"
         mkdir -p "$LINKS_DIR"

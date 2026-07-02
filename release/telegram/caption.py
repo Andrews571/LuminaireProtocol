@@ -46,10 +46,9 @@ def utf16_len(s):
     return sum(2 if ord(c) > 0xFFFF else 1 for c in s)
 
 
-def truncate(caption, limit):
+def truncate(caption, limit, suffix="\n\u2026\n```"):
     if utf16_len(caption) <= limit:
         return caption
-    suffix = "\n\u2026\n```"
     suffix_len = utf16_len(suffix)
     result = []
     current_len = 0
@@ -94,26 +93,21 @@ def build_blocks(env):
         f"Build System : {build_system}\n"
         f"Compiler     : {compiler}\n"
         f"LTO          : {lto}\n"
-        f"Date         : {date_str}\n"
-        "```"
+        f"Date         : {date_str}```"
     )
     is_vanilla = env.get("ROOT_SOLUTION", "").upper() == "VANILLA"
     ksu_display = "N/A" if is_vanilla else root_solution
-    block_root = (
-        "```Root-solution\n"
-        f"KSU   : {ksu_display}\n"
-        f"SuSFS : {susfs_ver}\n"
-        + ("Vanilla Build\n" if is_vanilla else "")
-        + "```"
-    )
+    root_lines = [f"KSU   : {ksu_display}", f"SuSFS : {susfs_ver}"]
+    if is_vanilla:
+        root_lines.append("Vanilla Build")
+    block_root = "```Root-solution\n" + "\n".join(root_lines) + "```"
     block_addons = (
         "```Add-ons\n"
         f"Mountless Engine : {mountless}\n"
         f"Re:Kernel        : {rekernel}\n"
         f"BBRv3            : {bbrv3}\n"
         f"BBG              : {bbg}\n"
-        f"Droidspaces      : {droidspaces}\n"
-        "```"
+        f"Droidspaces      : {droidspaces}```"
     )
     footer = "[{}]({}) \\| [Run \\#{}]({})".format(
         mdv2_escape(commit_short),
@@ -123,6 +117,18 @@ def build_blocks(env):
     )
 
     return block_luminaire, block_root, block_addons, footer
+
+
+ADDON_DISPLAY_NAMES = {
+    "bbrv3":       "BBRv3",
+    "bbg":         "BBG",
+    "rekernel":    "Re:Kernel",
+    "droidspaces": "Droidspaces",
+    "zeromount":   "ZeroMount",
+    "nomount":     "NoMount",
+}
+
+CHANGELOG_MAX_LEN = 300
 
 
 def build_channel_caption(env, variant_links):
@@ -137,22 +143,82 @@ def build_channel_caption(env, variant_links):
     # e.g. "6.1.174" -> "6.1.x"
     major_minor = ".".join(linux_ver.split(".")[:2]) + ".x"
 
-    header = (
+    sections = [
         f"*Luminaire \\| Protocol \\| {mdv2_escape(linux_ver)}*\n"
         f"*GKI Kernel \\| Android {mdv2_escape(android_ver)} \\| Linux {mdv2_escape(major_minor)}*"
-    )
+    ]
 
-    download_lines = ["", "*Download*"]
+    # Add-ons — only the ones actually enabled for this run
+    addon_tokens = [t for t in env.get("ADDONS", "").split(",") if t]
+    if addon_tokens:
+        addon_lines = ["*Add\\-ons*"]
+        for token in addon_tokens:
+            name = ADDON_DISPLAY_NAMES.get(token, token)
+            addon_lines.append(f"\\- {mdv2_escape(name)}")
+        sections.append("\n".join(addon_lines))
+
+    # Download links
+    download_lines = ["*Download*"]
     for variant_key, link in variant_links.items():
         display = VARIANT_DISPLAY.get(variant_key, mdv2_escape(variant_key))
         safe_link = mdv2_escape_url(link)
         download_lines.append(f"• [{display}]({safe_link})")
+    sections.append("\n".join(download_lines))
 
-    donate_url   = mdv2_escape_url("https://sociabuzz.com/chainonyourdoor")
-    support_line = f"\n[Support]({donate_url})"
+    # Changelog — manual input, optional, capped so it can't crowd out the
+    # rest of the caption if someone pastes something huge
+    changelog_raw = env.get("CHANGELOG", "").strip()
+    if changelog_raw:
+        entries = [e.strip() for e in changelog_raw.split(";") if e.strip()]
+        changelog_lines = ["*Changelog*"]
+        for entry in entries:
+            changelog_lines.append(f"\\- {mdv2_escape(entry)}")
+        changelog_block = "\n".join(changelog_lines)
+        if utf16_len(changelog_block) > CHANGELOG_MAX_LEN:
+            trimmed = []
+            length = 0
+            ellipsis = "\u2026"
+            for ch in changelog_block:
+                ch_len = 2 if ord(ch) > 0xFFFF else 1
+                if length + ch_len + utf16_len(ellipsis) > CHANGELOG_MAX_LEN:
+                    break
+                trimmed.append(ch)
+                length += ch_len
+            changelog_block = "".join(trimmed) + ellipsis
+        sections.append(changelog_block)
 
-    caption = "\n".join([header] + download_lines) + support_line
-    return truncate(caption, CAPTION_LIMIT)
+    # Traceability — commit + workflow run that produced this post
+    commit_short = env.get("GITHUB_SHA", "")[:7]
+    commit_url = "{}/{}/commit/{}".format(
+        env.get("GITHUB_SERVER_URL", ""),
+        env.get("GITHUB_REPOSITORY", ""),
+        env.get("GITHUB_SHA", ""))
+    commits_url = "{}/{}/commits/main/".format(
+        env.get("GITHUB_SERVER_URL", ""),
+        env.get("GITHUB_REPOSITORY", ""))
+    run_url = "{}/{}/actions/runs/{}".format(
+        env.get("GITHUB_SERVER_URL", ""),
+        env.get("GITHUB_REPOSITORY", ""),
+        env.get("GITHUB_RUN_ID", ""))
+    trace_line = "[Commits]({}) \\| [Workflows]({})".format(
+        mdv2_escape_url(commits_url), mdv2_escape_url(run_url))
+    sections.append(trace_line)
+
+    # Bug reports point to the community discussion group, not the CI group
+    group_url = mdv2_escape_url("https://t.me/{}".format(env.get("TELEGRAM_GROUP", "")))
+    sections.append(
+        f"Found a bug? Let's discuss it in [Luminaire Lab]({group_url})"
+    )
+
+    date_str = mdv2_escape(datetime.now().strftime("%-d %b %Y"))
+    donate_url = mdv2_escape_url("https://sociabuzz.com/chainonyourdoor")
+    sections.append(f"{date_str} \u00b7 [Support]({donate_url})")
+
+    sections.append("\\#GKI \\#Kernel \\#Luminaire")
+
+    caption = "\n\n".join(sections)
+    return truncate(caption, CAPTION_LIMIT, suffix="\n\u2026")
+
 
 
 def main():
