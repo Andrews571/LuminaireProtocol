@@ -19,7 +19,12 @@ SUKISU_SETUP=$(curl -LSs --fail --retry 3 --retry-all-errors --connect-timeout 3
     || error "SukiSU-Ultra: failed to download setup.sh!"
 [ -n "$SUKISU_SETUP" ] || error "SukiSU-Ultra: setup.sh is empty!"
 echo "$SUKISU_SETUP" | grep -q "^#!" || error "SukiSU-Ultra: setup.sh looks invalid (no shebang)!"
-echo "$SUKISU_SETUP" | bash || error "SukiSU-Ultra: setup.sh failed!"
+if [ -n "${SUKISU_REF:-}" ]; then
+    log "Pinning SukiSU-Ultra to ${SUKISU_REF}"
+    echo "$SUKISU_SETUP" | bash -s -- "$SUKISU_REF" || error "SukiSU-Ultra: setup.sh failed!"
+else
+    echo "$SUKISU_SETUP" | bash || error "SukiSU-Ultra: setup.sh failed!"
+fi
 [ -d "${KERNEL_SRC}/KernelSU" ] || error "SukiSU-Ultra: KernelSU dir not found after setup!"
 cd "$ROOT_DIR"
 log "SukiSU-Ultra integrated ✅"

@@ -29,8 +29,26 @@ log "Cloning SuSFS (${SUSFS_BRANCH})..."
 git config --global http.connectTimeout 30
 git config --global http.lowSpeedLimit 1000
 git config --global http.lowSpeedTime 30
-retry 3 run_quiet git clone -q --depth=1 -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_DIR" \
-    || error "SuSFS clone failed after 3 attempts!"
+if [ -n "${SUSFS_REF:-}" ]; then
+    log "Pinning SuSFS to ${SUSFS_REF}"
+    mkdir -p "$SUSFS_DIR"
+    (
+        cd "$SUSFS_DIR"
+        git init -q
+        git remote add origin "$SUSFS_REPO"
+        run_quiet git fetch --depth=1 origin "$SUSFS_REF" && git checkout -q FETCH_HEAD
+    ) || {
+        warn "SuSFS: server doesn't support fetching bare SHA — falling back to full clone"
+        rm -rf "$SUSFS_DIR"
+        retry 3 run_quiet git clone -q -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_DIR" \
+            || error "SuSFS: full clone fallback failed after 3 attempts!"
+        (cd "$SUSFS_DIR" && git checkout -q "$SUSFS_REF") \
+            || error "SuSFS: ${SUSFS_REF} not found on ${SUSFS_BRANCH} even after full clone!"
+    }
+else
+    retry 3 run_quiet git clone -q --depth=1 -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_DIR" \
+        || error "SuSFS clone failed after 3 attempts!"
+fi
 
 log "Copying SuSFS source files..."
 cp "${SUSFS_DIR}/kernel_patches/fs/susfs.c"                  "${KERNEL_SRC}/fs/susfs.c"

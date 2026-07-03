@@ -19,7 +19,12 @@ RESUKISU_SETUP=$(curl -LSs --fail --retry 3 --retry-all-errors --connect-timeout
     || error "ReSukiSU: failed to download setup.sh!"
 [ -n "$RESUKISU_SETUP" ] || error "ReSukiSU: setup.sh is empty!"
 echo "$RESUKISU_SETUP" | grep -q "^#!" || error "ReSukiSU: setup.sh looks invalid (no shebang)!"
-echo "$RESUKISU_SETUP" | bash || error "ReSukiSU: setup.sh failed!"
+if [ -n "${RESUKISU_REF:-}" ]; then
+    log "Pinning ReSukiSU to ${RESUKISU_REF}"
+    echo "$RESUKISU_SETUP" | bash -s -- "$RESUKISU_REF" || error "ReSukiSU: setup.sh failed!"
+else
+    echo "$RESUKISU_SETUP" | bash || error "ReSukiSU: setup.sh failed!"
+fi
 [ -d "${KERNEL_SRC}/KernelSU" ] || error "ReSukiSU: KernelSU dir not found after setup!"
 cd "$ROOT_DIR"
 log "ReSukiSU integrated ✅"

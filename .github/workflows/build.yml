@@ -250,8 +250,26 @@ jobs:
       - name: "Disk Usage"
         run: df -h && du -sh ~/kernel-cache/ 2>/dev/null || true
 
+      - name: "Resolve Upstream Refs"  # decides pinned vs candidate ref for KSU fork / SuSFS
+        if: matrix.root_solution != 'VANILLA'
+        run: bash kernel/android14-6.1-lts/ksu/resolve_refs.sh
+
       - name: "Build"
+        id: build
         run: bash build.sh
+
+      - name: "Promote or Report Pin"  # updates manifest.json, files an issue on failed candidates
+        if: always() && matrix.root_solution != 'VANILLA'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+        run: |
+          OUTCOME="${{ steps.build.outcome }}"
+          [ "$OUTCOME" = "success" ] && OUTCOME="success" || OUTCOME="failure"
+          COMPONENTS="${{ matrix.root_solution == 'RESUKISU' && 'resukisu' || 'sukisu' }}"
+          if [ "${{ matrix.root_solution }}" = "RESUKISU" ] && [ "${{ matrix.susfs }}" = "true" ]; then
+            COMPONENTS="resukisu susfs"
+          fi
+          bash kernel/android14-6.1-lts/ksu/promote_or_report.sh "$OUTCOME" $COMPONENTS
 
       - name: "Ccache Stats"
         if: always() && env.IS_MAKE == 'true'
