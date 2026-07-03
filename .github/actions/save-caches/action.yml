@@ -1,5 +1,5 @@
 name: "Save Caches"
-description: "Save arsenal to GH Cache, ccache to Release"
+description: "Save ccache to GH Release (arsenal itself is auto-saved by actions/cache in setup-arsenal on cache miss, not here)"
 
 inputs:
   ccache-prefix:

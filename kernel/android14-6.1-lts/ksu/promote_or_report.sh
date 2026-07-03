@@ -45,15 +45,15 @@ fi
 git config --global user.name  "luminaire-bot"
 git config --global user.email "luminaire-bot@users.noreply.github.com"
 
-# actions/checkout (default persist-credentials: true) leaves an
-# Authorization header config'd for github.com that overrides whatever
-# credential is embedded in the remote URL below — so without this,
-# every push here silently authenticates as github-actions[bot] (limited
-# permissions) instead of PERSONAL_TOKEN, failing with a 403 that looks
-# like a token/permissions problem but isn't one.
-# https://github.com/actions/checkout/blob/main/adrs/0153-checkout-v2.md#persist-credentials
-git config --unset-all "http.https://github.com/.extraheader" 2>/dev/null || true
-
+# Real fix for the github-actions[bot]/403 push failure lives in build.yml's
+# Start-Build checkout step (persist-credentials: false), not here. A
+# previous attempt tried `git config --unset-all
+# http.https://github.com/.extraheader` at this point, but actions/checkout
+# v6+ no longer writes that key into this repo's local .git/config — it's
+# persisted via a global `includeIf.gitdir` pointing at a separate file
+# under $RUNNER_TEMP, so there was nothing here to unset and the override
+# kept winning silently. Confirmed against actions/checkout's own v6
+# changelog/issue tracker (PR "Persist creds to a separate file").
 REMOTE="https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
 # Applies one jq patch to manifest.json on top of the latest main and

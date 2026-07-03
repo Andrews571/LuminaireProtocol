@@ -214,6 +214,15 @@ jobs:
     steps:
       - name: "Checkout"
         uses: actions/checkout@v7
+        with:
+          # v6+ persists creds via a global includeIf.gitdir config pointing
+          # at a file under $RUNNER_TEMP, not .git/config in this repo — so
+          # it can't be locally unset by a later step (see promote_or_report.sh
+          # for the fallout this caused). Nothing else in this job needs git
+          # auth against LuminaireProtocol itself: kernel/addon sources are
+          # public clones, and promote_or_report.sh brings its own
+          # PERSONAL_TOKEN-embedded remote for its push.
+          persist-credentials: false
 
       - name: "Free Disk Space"
         run: |
