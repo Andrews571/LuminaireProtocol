@@ -166,8 +166,6 @@ run_addons() {
         addon="${addon// /}"
         [ -z "$addon" ] && continue
         local script="${LUMINAIRE_PATCH_DIR}/kernel/addons/${addon}/${addon}.sh"
-        # Fallback to flat structure for addons without subfolder (droidspaces, nomount)
-        [ -f "$script" ] || script="${LUMINAIRE_PATCH_DIR}/kernel/addons/${addon}.sh"
         if [ -f "$script" ]; then
             source "$script" || error "Addon failed: ${addon}"
         else
