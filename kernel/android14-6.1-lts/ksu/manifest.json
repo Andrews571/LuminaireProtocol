@@ -7,7 +7,18 @@
     "good": "52eaf3b8fa50207af2ce4f78d73729dc9e1303ea",
     "bad": []
   },
-  "sukisu": { "good": "", "bad": [] },
-  "sukisu_builtin": { "good": "", "bad": [] },
-  "susfs_sukisu": { "good": "", "bad": [] }
+  "sukisu": {
+    "good": "",
+    "bad": [
+      "0ca744a88835144c58d8256ebb32c279edabfcde"
+    ]
+  },
+  "sukisu_builtin": {
+    "good": "",
+    "bad": []
+  },
+  "susfs_sukisu": {
+    "good": "",
+    "bad": []
+  }
 }
