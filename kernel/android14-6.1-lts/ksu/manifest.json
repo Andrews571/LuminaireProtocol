@@ -3,12 +3,18 @@
     "good": "b159a8d610fe6c231de7782eed4f06c07e164a74",
     "bad": []
   },
-  "sukisu": {
-    "good": "",
-    "bad": []
-  },
-  "susfs": {
+  "susfs_resukisu": {
     "good": "52eaf3b8fa50207af2ce4f78d73729dc9e1303ea",
     "bad": []
+  },
+  "sukisu": {
+    "good": "v4.1.2",
+    "bad": [],
+    "seeded_from": "zzh20188/GKI_KernelSU_SUSFS v2.1.0-r2, verified 2026-04-09"
+  },
+  "susfs_sukisu": {
+    "good": "0c6766bf8036f6592fcf59f7f462981f8998b32b",
+    "bad": [],
+    "seeded_from": "zzh20188/GKI_KernelSU_SUSFS v2.1.0-r2, verified 2026-04-09"
   }
 }

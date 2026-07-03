@@ -115,9 +115,9 @@ case "$ROOT_SOLUTION" in
         resolve_component "resukisu" "RESUKISU" "$latest"
 
         if [ "$SUSFS_ENABLED" = "true" ]; then
-            latest=$(latest_sha_or_empty "SuSFS" \
+            latest=$(latest_sha_or_empty "SuSFS (ReSukiSU pairing)" \
                 "https://gitlab.com/api/v4/projects/simonpunk%2Fsusfs4ksu/repository/commits/gki-android14-6.1" '.id')
-            resolve_component "susfs" "SUSFS" "$latest"
+            resolve_component "susfs_resukisu" "SUSFS_RESUKISU" "$latest"
         fi
         ;;
     SUKISU)
@@ -129,6 +129,19 @@ case "$ROOT_SOLUTION" in
         [ -n "$tag" ] && latest=$(latest_sha_or_empty "SukiSU-Ultra" \
             "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/commits/${tag}" '.sha')
         resolve_component "sukisu" "SUKISU" "$latest"
+
+        # NOTE: SukiSU-Ultra needs a *specific* susfs4ksu commit verified to
+        # pair with its own commit (not just "SuSFS's newest") — unlike
+        # ReSukiSU, tracking SuSFS's branch tip here is unlikely to land on
+        # a working pair. We still auto-try it (the pin+rollback safety net
+        # makes that harmless — a bad candidate just gets blacklisted and
+        # falls back), but don't expect it to move often on its own; bump
+        # the manifest by hand when you find a new community-verified pair.
+        if [ "$SUSFS_ENABLED" = "true" ]; then
+            latest=$(latest_sha_or_empty "SuSFS (SukiSU pairing)" \
+                "https://gitlab.com/api/v4/projects/simonpunk%2Fsusfs4ksu/repository/commits/gki-android14-6.1" '.id')
+            resolve_component "susfs_sukisu" "SUSFS_SUKISU" "$latest"
+        fi
         ;;
     VANILLA)
         log "resolve_refs: VANILLA — nothing to track"

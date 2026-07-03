@@ -5,18 +5,16 @@
 # ======================================================
 # Repo: https://gitlab.com/simonpunk/susfs4ksu
 
-# SuSFS compatibility guard
-# SukiSU-Ultra uses syscall_hook_manager with restricted symbol
-# visibility — incompatible with susfs4ksu adapter patches without
-# pinning to an older commit. Skip early to avoid wasting build time.
-SUSFS_INCOMPATIBLE_FORKS=("SUKISU")
-for _fork in "${SUSFS_INCOMPATIBLE_FORKS[@]}"; do
-    if [ "$ROOT_SOLUTION" = "$_fork" ]; then
-        warn "SuSFS is not supported for ${ROOT_SOLUTION} (incompatible hook architecture — see wishlist)"
-        warn "Building ${ROOT_SOLUTION} WITHOUT SuSFS."
-        return 0
-    fi
-done
+# SuSFS pin resolution — SukiSU-Ultra needs an exact commit paired with a
+# matching susfs4ksu commit (community-verified combo, not just "old enough").
+# ReSukiSU is generally compatible with SuSFS's branch tip, so it isn't
+# pinned as tightly. resolve_refs.sh exports the right *_REF beforehand.
+if [ "$ROOT_SOLUTION" = "SUKISU" ]; then
+    SUSFS_REF="${SUSFS_SUKISU_REF:-}"
+    [ -n "$SUSFS_REF" ] || warn "SuSFS+SukiSU: no pin resolved — build will likely fail (see wishlist for known-good combos)"
+else
+    SUSFS_REF="${SUSFS_RESUKISU_REF:-}"
+fi
 
 KSU_DIR="${KSU_DIR:-${KERNEL_SRC}/KernelSU}"
 SUSFS_BRANCH="gki-android14-6.1"

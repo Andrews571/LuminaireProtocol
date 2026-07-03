@@ -144,15 +144,10 @@ jobs:
         env:
           SUSFS_ENABLED: ${{ inputs.susfs == 'enable' }}
         run: |
-          if ${{ inputs.sukisu }} && [ "$SUSFS_ENABLED" = "true" ]; then
-            echo "::error::SukiSU-Ultra is incompatible with SuSFS (hook architecture conflict). Disable SuSFS or switch to ReSukiSU."
-            exit 1
-          fi
-
           variants=()
           ${{ inputs.vanilla }}  && variants+=("{\"root_solution\":\"VANILLA\",\"susfs\":false}")
           ${{ inputs.resukisu }} && variants+=("{\"root_solution\":\"RESUKISU\",\"susfs\":${SUSFS_ENABLED}}")
-          ${{ inputs.sukisu }}   && variants+=("{\"root_solution\":\"SUKISU\",\"susfs\":false}")
+          ${{ inputs.sukisu }}   && variants+=("{\"root_solution\":\"SUKISU\",\"susfs\":${SUSFS_ENABLED}}")
 
           if [ ${#variants[@]} -eq 0 ]; then
             echo "No root solutions selected!"
@@ -279,8 +274,12 @@ jobs:
           OUTCOME="${{ steps.build.outcome }}"
           [ "$OUTCOME" = "success" ] && OUTCOME="success" || OUTCOME="failure"
           COMPONENTS="${{ matrix.root_solution == 'RESUKISU' && 'resukisu' || 'sukisu' }}"
-          if [ "${{ matrix.root_solution }}" = "RESUKISU" ] && [ "${{ matrix.susfs }}" = "true" ]; then
-            COMPONENTS="resukisu susfs"
+          if [ "${{ matrix.susfs }}" = "true" ]; then
+            if [ "${{ matrix.root_solution }}" = "RESUKISU" ]; then
+              COMPONENTS="resukisu susfs_resukisu"
+            else
+              COMPONENTS="sukisu susfs_sukisu"
+            fi
           fi
           bash kernel/android14-6.1-lts/ksu/promote_or_report.sh "$OUTCOME" $COMPONENTS
 
