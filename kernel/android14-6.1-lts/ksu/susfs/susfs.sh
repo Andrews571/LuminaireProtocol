@@ -15,16 +15,16 @@
 # hook API (ksu_handle_*) that simonpunk/susfs4ksu's patch targets, in favor
 # of an internal syscall_hook_manager — confirmed by a real build (undefined
 # ksu_handle_*/susfs_* symbols at link time, run 28714488530). pershoot
-# maintains a KernelSU-Next fork (dev-susfs branch, see ksu_next.sh) paired
+# maintains a KernelSU-Next fork (dev-susfs branch, see ksunext.sh) paired
 # with their own susfs4ksu fork/branch, which is what's tracked below
 # instead of upstream simonpunk/susfs4ksu for this one root solution.
-if [ "$ROOT_SOLUTION" = "SUKISU" ]; then
+if [ "$KERNEL_VARIANT" = "SUKISU" ]; then
     SUSFS_REF="${SUSFS_SUKISU_REF:-}"
     [ -n "$SUSFS_REF" ] || warn "SuSFS+SukiSU: no pin resolved — build will likely fail (see wishlist for known-good combos)"
     SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
     SUSFS_BRANCH="gki-android14-6.1"
-elif [ "$ROOT_SOLUTION" = "KSU_NEXT" ]; then
-    SUSFS_REF="${SUSFS_KSU_NEXT_REF:-}"
+elif [ "$KERNEL_VARIANT" = "KSUNEXT" ]; then
+    SUSFS_REF="${SUSFS_KSUNEXT_REF:-}"
     SUSFS_REPO="https://gitlab.com/pershoot/susfs4ksu.git"
     SUSFS_BRANCH="gki-android14-6.1-dev"
 else
@@ -107,7 +107,7 @@ python3 "${PATCHER_DIR}/fix_namespace.py" "${KERNEL_SRC}/fs/namespace.c" \
     || error "SuSFS: namespace.c fix failed!"
 log "namespace.c fixed ✅"
 
-if [ "$ROOT_SOLUTION" = "KSU_NEXT" ]; then
+if [ "$KERNEL_VARIANT" = "KSUNEXT" ]; then
     # pershoot's susfs4ksu fork ships a second patch that KernelSU-Next's
     # dev-susfs branch needs alongside the main SuSFS patch — it scopes
     # down the manual hooks so they don't collide with KSU-Next's own

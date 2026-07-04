@@ -4,14 +4,14 @@
 # 📦 RELEASE — ANYKERNEL3 PACKAGING
 # ======================================================
 
-case "${ROOT_SOLUTION}" in
+case "${KERNEL_VARIANT}" in
     VANILLA)  ZIP_VARIANT_TAG="VANILLA" ;;
     RESUKISU) ZIP_VARIANT_TAG="RESUKISU" ;;
     SUKISU)   ZIP_VARIANT_TAG="SUKISU" ;;
-    KSU_NEXT) ZIP_VARIANT_TAG="KSU_NEXT" ;;
-    *)        ZIP_VARIANT_TAG="${ROOT_SOLUTION}" ;;
+    KSUNEXT)  ZIP_VARIANT_TAG="KSUNEXT" ;;
+    *)        ZIP_VARIANT_TAG="${KERNEL_VARIANT}" ;;
 esac
-[ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ] && ZIP_VARIANT_TAG="${ZIP_VARIANT_TAG}+SUSFS"
+[ "$SUSFS_ENABLED" = "true" ] && [ "$KERNEL_VARIANT" != "VANILLA" ] && ZIP_VARIANT_TAG="${ZIP_VARIANT_TAG}+SUSFS"
 [ -n "${SUBLEVEL:-}" ] || error "SUBLEVEL is not set — branding.sh may not have run correctly!"
 ZIP_NAME="Ak3-${KERNEL_VERSION}.${SUBLEVEL}-${ZIP_VARIANT_TAG}-R${GITHUB_RUN_NUMBER:-0}.zip"
 export ZIP_NAME

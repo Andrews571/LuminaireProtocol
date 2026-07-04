@@ -1,5 +1,5 @@
 name: "✨ Luminaire Protocol"
-run-name: "${{ inputs.kernel_version }} | ${{ inputs.enable_lto != 'NONE' && format('{0} LTO x ', inputs.enable_lto) || '' }}${{ contains(inputs.build_system, 'AOSP') && 'AOSP' || contains(inputs.build_system, 'Cirrus') && 'Cirrus' || contains(inputs.build_system, 'Neutron') && 'Neutron' || contains(inputs.build_system, 'WeebX') && 'WeebX' || 'Zyc' }} (${{ inputs.run_mode }})"
+run-name: "${{ inputs.kernel_version }} | ${{ inputs.lto_mode != 'NONE' && format('{0} LTO x ', inputs.lto_mode) || '' }}${{ contains(inputs.build_system, 'AOSP') && 'AOSP' || contains(inputs.build_system, 'Cirrus') && 'Cirrus' || contains(inputs.build_system, 'Neutron') && 'Neutron' || contains(inputs.build_system, 'WeebX') && 'WeebX' || 'Zyc' }} (${{ inputs.run_mode }})"
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ on:
           - "6.1"
           - "6.6"
           - "6.12"
-      ksu_next:
+      ksunext:
         description: "KernelSU-Next"
         type: boolean
         default: true
@@ -71,7 +71,7 @@ on:
         description: "Droidspaces"
         type: boolean
         default: true
-      enable_lto:
+      lto_mode:
         description: "LTO"
         type: choice
         default: "THIN"
@@ -156,10 +156,10 @@ jobs:
           SUSFS_ENABLED: ${{ inputs.susfs == 'enable' }}
         run: |
           variants=()
-          ${{ inputs.vanilla }}  && variants+=("{\"root_solution\":\"VANILLA\",\"susfs\":false}")
-          ${{ inputs.resukisu }} && variants+=("{\"root_solution\":\"RESUKISU\",\"susfs\":${SUSFS_ENABLED}}")
-          ${{ inputs.sukisu }}   && variants+=("{\"root_solution\":\"SUKISU\",\"susfs\":${SUSFS_ENABLED}}")
-          ${{ inputs.ksu_next }} && variants+=("{\"root_solution\":\"KSU_NEXT\",\"susfs\":${SUSFS_ENABLED}}")
+          ${{ inputs.vanilla }}  && variants+=("{\"kernel_variant\":\"VANILLA\",\"susfs\":false}")
+          ${{ inputs.resukisu }} && variants+=("{\"kernel_variant\":\"RESUKISU\",\"susfs\":${SUSFS_ENABLED}}")
+          ${{ inputs.sukisu }}   && variants+=("{\"kernel_variant\":\"SUKISU\",\"susfs\":${SUSFS_ENABLED}}")
+          ${{ inputs.ksunext }} && variants+=("{\"kernel_variant\":\"KSUNEXT\",\"susfs\":${SUSFS_ENABLED}}")
 
           if [ ${#variants[@]} -eq 0 ]; then
             echo "No root solutions selected!"
@@ -189,7 +189,7 @@ jobs:
   # BUILD PER VARIANT (parallel)
   # ======================================================
   Start-Build:
-    name: "Build Kernel (${{ matrix.root_solution }}${{ matrix.susfs && '+SUSFS' || '' }})"
+    name: "Build Kernel (${{ matrix.kernel_variant }}${{ matrix.susfs && '+SUSFS' || '' }})"
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: prepare-matrix
@@ -208,10 +208,10 @@ jobs:
       # output). Passed through so restore-path log messages can say which
       # case they're in instead of a bare "restored from cache".
       CACHE_REFRESHED:             ${{ needs.prepare-matrix.outputs.cache_refreshed }}
-      ROOT_SOLUTION:               ${{ matrix.root_solution }}
+      KERNEL_VARIANT:               ${{ matrix.kernel_variant }}
       SUSFS_ENABLED:               ${{ matrix.susfs }}
       KERNEL_VERSION:              ${{ inputs.kernel_version }}
-      ENABLE_LTO:                  ${{ inputs.enable_lto }}
+      LTO_MODE:                  ${{ inputs.lto_mode }}
       RUN_MODE:                    ${{ inputs.run_mode }}
       BUILD_SYSTEM:                ${{ inputs.build_system }}
       ADDONS:                      ${{ needs.prepare-matrix.outputs.addons }}
@@ -258,16 +258,16 @@ jobs:
           build-system:   ${{ inputs.build_system }}
           kernel-version: ${{ inputs.kernel_version }}
           ref-name:       ${{ github.ref_name }}
-          root-solution:  ${{ matrix.root_solution }}
+          kernel-variant:  ${{ matrix.kernel_variant }}
           susfs:          ${{ matrix.susfs }}
-          enable-lto:     ${{ inputs.enable_lto }}
+          lto-mode:     ${{ inputs.lto_mode }}
           gh-token:       ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Disk Usage"
         run: df -h && du -sh ~/kernel-cache/ 2>/dev/null || true
 
       - name: "Scout Upstream Refs"  # decides pinned vs candidate ref for KSU fork / SuSFS
-        if: matrix.root_solution != 'VANILLA'
+        if: matrix.kernel_variant != 'VANILLA'
         run: bash kernel/android14-6.1-lts/ksu/checkpoint/scout.sh
 
       - name: "Build"
@@ -279,13 +279,13 @@ jobs:
         run: ~/ccache-bin/ccache --show-stats
 
       - name: "Checkpoint (Promote/Blacklist)"  # updates manifest.json, files an issue on failed candidates
-        if: always() && matrix.root_solution != 'VANILLA'
+        if: always() && matrix.kernel_variant != 'VANILLA'
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
         run: |
           OUTCOME="${{ steps.build.outcome }}"
           [ "$OUTCOME" = "success" ] && OUTCOME="success" || OUTCOME="failure"
-          case "${{ matrix.root_solution }}" in
+          case "${{ matrix.kernel_variant }}" in
             RESUKISU)
               if [ "${{ matrix.susfs }}" = "true" ]; then
                 COMPONENTS="resukisu susfs_resukisu"
@@ -300,11 +300,11 @@ jobs:
                 COMPONENTS="sukisu"
               fi
               ;;
-            KSU_NEXT)
+            KSUNEXT)
               if [ "${{ matrix.susfs }}" = "true" ]; then
-                COMPONENTS="ksu_next_susfs_fork susfs_ksu_next"
+                COMPONENTS="ksunext_susfs_fork susfs_ksunext"
               else
-                COMPONENTS="ksu_next"
+                COMPONENTS="ksunext"
               fi
               ;;
           esac
@@ -315,16 +315,16 @@ jobs:
         uses: ./.github/actions/save-build-caches
         with:
           build-system:   ${{ inputs.build_system }}
-          enable-lto:     ${{ inputs.enable_lto }}
-          lto-asset-name: lto-data-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ matrix.root_solution }}-${{ github.ref_name }}-lto.tar.zst
-          ccache-prefix:  ccache-data-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.enable_lto != 'NONE' && format('lto-{0}-', inputs.enable_lto) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-
+          lto-mode:     ${{ inputs.lto_mode }}
+          lto-asset-name: lto-data-${{ inputs.kernel_version }}-${{ steps.setup-build-env.outputs.clang-variant }}-${{ matrix.kernel_variant }}-${{ github.ref_name }}-lto.tar.zst
+          ccache-prefix:  ccache-data-${{ matrix.kernel_variant }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.kernel_version }}-${{ inputs.lto_mode != 'NONE' && format('lto-{0}-', inputs.lto_mode) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ github.ref_name }}-
           gh-token:       ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Upload Variant Link"  # for channel post aggregation
         if: inputs.run_mode == 'Release'
         uses: actions/upload-artifact@v7
         with:
-          name: variant-link-${{ matrix.root_solution }}${{ matrix.susfs && '-susfs' || '' }}
+          name: variant-link-${{ matrix.kernel_variant }}${{ matrix.susfs && '-susfs' || '' }}
           path: variant-links/
           if-no-files-found: ignore
 

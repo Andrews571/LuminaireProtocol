@@ -70,24 +70,24 @@ if [ "${BUILD_SYSTEM}" = "MAKE" ] && [ -n "${CLANG_VARIANT:-}" ]; then
     BUILD_SYSTEM_DISPLAY="Make - ${CLANG_VARIANT^}"
 fi
 
-case "${ROOT_SOLUTION}" in
-    VANILLA)  ROOT_SOLUTION_DISPLAY="Vanilla" ;;
-    RESUKISU) ROOT_SOLUTION_DISPLAY="ReSukiSU" ;;
-    SUKISU)   ROOT_SOLUTION_DISPLAY="SukiSU-Ultra" ;;
-    KSU_NEXT) ROOT_SOLUTION_DISPLAY="KernelSU-Next" ;;
-    *)        ROOT_SOLUTION_DISPLAY="${ROOT_SOLUTION}" ;;
+case "${KERNEL_VARIANT}" in
+    VANILLA)  KERNEL_VARIANT_DISPLAY="Vanilla" ;;
+    RESUKISU) KERNEL_VARIANT_DISPLAY="ReSukiSU" ;;
+    SUKISU)   KERNEL_VARIANT_DISPLAY="SukiSU-Ultra" ;;
+    KSUNEXT)  KERNEL_VARIANT_DISPLAY="KernelSU-Next" ;;
+    *)        KERNEL_VARIANT_DISPLAY="${KERNEL_VARIANT}" ;;
 esac
 
 # Only ReSukiSU has a resolved version string right now (see
 # resukisu.sh's "Version string" step) — other forks don't compute one
 # yet, so this stays empty for them and the caption just omits it.
-ROOT_SOLUTION_VERSION=""
-if [ "${ROOT_SOLUTION}" = "RESUKISU" ]; then
-    ROOT_SOLUTION_VERSION="${RESUKISU_VERSION_DISPLAY:-}"
+KERNEL_VARIANT_VERSION=""
+if [ "${KERNEL_VARIANT}" = "RESUKISU" ]; then
+    KERNEL_VARIANT_VERSION="${RESUKISU_VERSION_DISPLAY:-}"
 fi
 
 SUSFS_VER="N/A"
-if [ "$SUSFS_ENABLED" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
+if [ "$SUSFS_ENABLED" = "true" ] && [ "$KERNEL_VARIANT" != "VANILLA" ]; then
     SUSFS_H="${KERNEL_SRC}/include/linux/susfs.h"
     if [ -f "$SUSFS_H" ]; then
         SUSFS_VER=$(grep -m1 'SUSFS_VERSION' "$SUSFS_H" \
@@ -109,10 +109,10 @@ CAPTION_CHANNEL_FILE="/tmp/telegram_caption_channel.txt"
 LINUX_VER="$LINUX_VER" \
 BUILD_SYSTEM_DISPLAY="$BUILD_SYSTEM_DISPLAY" \
 COMPILER_STRING="${COMPILER_STRING:-N/A}" \
-ENABLE_LTO="${ENABLE_LTO:-NONE}" \
-ROOT_SOLUTION="${ROOT_SOLUTION:-}" \
-ROOT_SOLUTION_DISPLAY="$ROOT_SOLUTION_DISPLAY" \
-ROOT_SOLUTION_VERSION="$ROOT_SOLUTION_VERSION" \
+LTO_MODE="${LTO_MODE:-NONE}" \
+KERNEL_VARIANT="${KERNEL_VARIANT:-}" \
+KERNEL_VARIANT_DISPLAY="$KERNEL_VARIANT_DISPLAY" \
+KERNEL_VARIANT_VERSION="$KERNEL_VARIANT_VERSION" \
 SUSFS_VER="$SUSFS_VER" \
 ADDONS="${ADDONS:-}" \
 GITHUB_SHA="${GITHUB_SHA:-}" \
@@ -149,9 +149,9 @@ if [ "$RUN_MODE_UPPER" = "RELEASE" ] && [ -n "${TELEGRAM_CHANNEL_ID:-}" ]; then
     if [ -z "$GROUP_MESSAGE_ID" ]; then
         warn "Telegram: could not get group message_id — skipping variant link save"
     else
-        VARIANT_KEY="${ROOT_SOLUTION}"
-        if [ "${SUSFS_ENABLED:-false}" = "true" ] && [ "$ROOT_SOLUTION" != "VANILLA" ]; then
-            VARIANT_KEY="${ROOT_SOLUTION}_SUSFS"
+        VARIANT_KEY="${KERNEL_VARIANT}"
+        if [ "${SUSFS_ENABLED:-false}" = "true" ] && [ "$KERNEL_VARIANT" != "VANILLA" ]; then
+            VARIANT_KEY="${KERNEL_VARIANT}_SUSFS"
         fi
 
         GROUP_MSG_LINK="https://t.me/${TELEGRAM_CI_GROUP}/${GROUP_MESSAGE_ID}"
@@ -159,7 +159,7 @@ if [ "$RUN_MODE_UPPER" = "RELEASE" ] && [ -n "${TELEGRAM_CHANNEL_ID:-}" ]; then
         LINKS_DIR="${GITHUB_WORKSPACE}/variant-links"
         mkdir -p "$LINKS_DIR"
         LINK_FILE="${LINKS_DIR}/${VARIANT_KEY}.json"
-        echo "{\"variant\":\"${VARIANT_KEY}\",\"link\":\"${GROUP_MSG_LINK}\",\"linux_ver\":\"${LINUX_VER}\",\"kernel_version\":\"${KERNEL_VERSION}\",\"ksu_version\":\"${ROOT_SOLUTION_VERSION}\"}" > "${LINK_FILE}"
+        echo "{\"variant\":\"${VARIANT_KEY}\",\"link\":\"${GROUP_MSG_LINK}\",\"linux_ver\":\"${LINUX_VER}\",\"kernel_version\":\"${KERNEL_VERSION}\",\"ksu_version\":\"${KERNEL_VARIANT_VERSION}\"}" > "${LINK_FILE}"
         log "Variant link saved → ${LINK_FILE} ✅"
     fi
 fi

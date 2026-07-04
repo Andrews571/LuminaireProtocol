@@ -8,11 +8,11 @@ inputs:
     required: true
   ref-name:
     required: true
-  root-solution:
+  kernel-variant:
     required: true
   susfs:
     required: true
-  enable-lto:
+  lto-mode:
     required: true
   gh-token:
     required: true
@@ -55,13 +55,13 @@ runs:
       if: startsWith(inputs.build-system, 'Make')
       uses: ./.github/actions/restore-caches
       with:
-        ccache-prefix: ccache-data-${{ inputs.root-solution }}${{ inputs.susfs == 'true' && '-susfs' || '' }}-${{ inputs.kernel-version }}-${{ inputs.enable-lto != 'NONE' && format('lto-{0}-', inputs.enable-lto) || '' }}${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.ref-name }}-
+        ccache-prefix: ccache-data-${{ inputs.kernel-variant }}${{ inputs.susfs == 'true' && '-susfs' || '' }}-${{ inputs.kernel-version }}-${{ inputs.lto-mode != 'NONE' && format('lto-{0}-', inputs.lto-mode) || '' }}${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.ref-name }}-
         kernel-version: ${{ inputs.kernel-version }}
         gh-token: ${{ inputs.gh-token }}
 
     - name: "Restore LTO Cache"
-      if: startsWith(inputs.build-system, 'Make') && inputs.enable-lto == 'THIN'
+      if: startsWith(inputs.build-system, 'Make') && inputs.lto-mode == 'THIN'
       uses: ./.github/actions/restore-lto-cache
       with:
-        asset-name: lto-data-${{ inputs.kernel-version }}-${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.root-solution }}-${{ inputs.ref-name }}-lto.tar.zst
+        asset-name: lto-data-${{ inputs.kernel-version }}-${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.kernel-variant }}-${{ inputs.ref-name }}-lto.tar.zst
         gh-token:   ${{ inputs.gh-token }}

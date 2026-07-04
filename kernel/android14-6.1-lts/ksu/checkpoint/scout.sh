@@ -105,7 +105,7 @@ resolve_component() {
     echo "CANDIDATE_${prefix}=${candidate}" >> "$GITHUB_ENV"
 }
 
-case "$ROOT_SOLUTION" in
+case "$KERNEL_VARIANT" in
     RESUKISU)
         latest=$(latest_sha_or_empty "ReSukiSU" \
             "https://api.github.com/repos/ReSukiSU/ReSukiSU/commits/main" '.sha')
@@ -144,7 +144,7 @@ case "$ROOT_SOLUTION" in
             resolve_component "sukisu" "SUKISU" "$latest"
         fi
         ;;
-    KSU_NEXT)
+    KSUNEXT)
         if [ "$SUSFS_ENABLED" = "true" ]; then
             # Official KernelSU-Next's dev branch dropped the manual hook
             # API SuSFS's kernel patch depends on (moved to
@@ -156,11 +156,11 @@ case "$ROOT_SOLUTION" in
             # as not production-ready — tracked like any other candidate.
             latest=$(latest_sha_or_empty "KernelSU-Next (pershoot dev-susfs fork)" \
                 "https://api.github.com/repos/pershoot/KernelSU-Next/commits/dev-susfs" '.sha')
-            resolve_component "ksu_next_susfs_fork" "KSU_NEXT_SUSFS_FORK" "$latest"
+            resolve_component "ksunext_susfs_fork" "KSUNEXT_SUSFS_FORK" "$latest"
 
             latest=$(latest_sha_or_empty "SuSFS (KSU-Next pairing, pershoot fork)" \
                 "https://gitlab.com/api/v4/projects/pershoot%2Fsusfs4ksu/repository/commits/gki-android14-6.1-dev" '.id')
-            resolve_component "susfs_ksu_next" "SUSFS_KSU_NEXT" "$latest"
+            resolve_component "susfs_ksunext" "SUSFS_KSUNEXT" "$latest"
         else
             # KernelSU-Next's own setup.sh defaults to the latest *tag* when
             # no ref is given (same semantic as SukiSU-Ultra's non-SUSFS
@@ -170,7 +170,7 @@ case "$ROOT_SOLUTION" in
             latest=""
             [ -n "$tag" ] && latest=$(latest_sha_or_empty "KernelSU-Next" \
                 "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/commits/${tag}" '.sha')
-            resolve_component "ksu_next" "KSU_NEXT" "$latest"
+            resolve_component "ksunext" "KSUNEXT" "$latest"
         fi
         ;;
     VANILLA)

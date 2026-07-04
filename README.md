@@ -50,7 +50,7 @@ This repo does **not** contain kernel source — it contains all the scripts and
 | `VANILLA` | — | — |
 | `RESUKISU` | ReSukiSU | ✅ + Multi-Manager |
 | `SUKISU` | SukiSU-Ultra | — |
-| `KSU_NEXT` | KernelSU-Next | ✅ (unverified pairing) |
+| `KSUNEXT` | KernelSU-Next | ✅ (unverified pairing) |
 
 ---
 

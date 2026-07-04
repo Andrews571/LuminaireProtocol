@@ -25,7 +25,7 @@ MAKE_ARGS=(
 mkdir -p "$LTO_CACHE_DIR"
 
 # ThinLTO: wrap ld.lld to redirect cache to RAM disk
-if [ "${ENABLE_LTO}" = "THIN" ]; then
+if [ "${LTO_MODE}" = "THIN" ]; then
     LD_WRAPPER="${KERNEL_SRC}/ld-wrapper"
     cat > "$LD_WRAPPER" << 'WRAPPER_EOF'
 #!/usr/bin/env bash

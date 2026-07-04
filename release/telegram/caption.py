@@ -20,8 +20,8 @@ VARIANT_DISPLAY = {
     "RESUKISU_SUSFS": "ReSukiSU\\+SUSFS",
     "SUKISU":         "SukiSU\\-Ultra",
     "SUKISU_SUSFS":   "SukiSU\\-Ultra\\+SUSFS",
-    "KSU_NEXT":       "KernelSU\\-Next",
-    "KSU_NEXT_SUSFS": "KernelSU\\-Next\\+SUSFS",
+    "KSUNEXT":       "KernelSU\\-Next",
+    "KSUNEXT_SUSFS": "KernelSU\\-Next\\+SUSFS",
 }
 
 # Single source of truth for addon display names — shared by build_blocks()
@@ -90,8 +90,8 @@ def build_blocks(env):
     linux_ver       = mdv2_code_escape(env.get("LINUX_VER", "N/A"))
     build_system    = mdv2_code_escape(env.get("BUILD_SYSTEM_DISPLAY", "N/A"))
     compiler        = mdv2_code_escape(env.get("COMPILER_STRING", "N/A"))
-    lto             = mdv2_code_escape(env.get("ENABLE_LTO", "NONE"))
-    root_solution   = mdv2_code_escape(env.get("ROOT_SOLUTION_DISPLAY", "N/A"))
+    lto             = mdv2_code_escape(env.get("LTO_MODE", "NONE"))
+    kernel_variant  = mdv2_code_escape(env.get("KERNEL_VARIANT_DISPLAY", "N/A"))
     susfs_ver       = mdv2_code_escape(env.get("SUSFS_VER", "N/A"))
     date_str        = mdv2_code_escape(datetime.now().strftime("%d %b %Y"))
 
@@ -128,9 +128,9 @@ def build_blocks(env):
         f"LTO          : {lto}\n"
         f"Date         : {date_str}```"
     )
-    is_vanilla = env.get("ROOT_SOLUTION", "").upper() == "VANILLA"
-    ksu_display = "N/A" if is_vanilla else root_solution
-    ksu_version = mdv2_code_escape(env.get("ROOT_SOLUTION_VERSION", ""))
+    is_vanilla = env.get("KERNEL_VARIANT", "").upper() == "VANILLA"
+    ksu_display = "N/A" if is_vanilla else kernel_variant
+    ksu_version = mdv2_code_escape(env.get("KERNEL_VARIANT_VERSION", ""))
     if not is_vanilla and ksu_version:
         ksu_display = f"{ksu_display} - {ksu_version}"
     root_lines = [f"KSU   : {ksu_display}", f"SuSFS : {susfs_ver}"]

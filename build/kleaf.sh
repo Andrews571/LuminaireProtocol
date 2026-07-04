@@ -10,7 +10,7 @@ fi
 
 KLEAF_ARGS=(
     --config=fast
-    --lto="${ENABLE_LTO,,}"
+    --lto="${LTO_MODE,,}"
     "${BRANDING_KLEAF_ARGS[@]}"
 )
 

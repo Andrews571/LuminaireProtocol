@@ -18,11 +18,11 @@ log "Merging luminaire.fragment..."
 log "Fragment merged ✅"
 
 # LTO
-if [ "${ENABLE_LTO}" = "THIN" ]; then
+if [ "${LTO_MODE}" = "THIN" ]; then
     config --disable CONFIG_LTO_CLANG_NONE
     config --enable  CONFIG_LTO_CLANG_THIN
     log "LTO: THIN ✅"
-elif [ "${ENABLE_LTO}" = "FULL" ]; then
+elif [ "${LTO_MODE}" = "FULL" ]; then
     config --disable CONFIG_LTO_CLANG_NONE
     config --disable CONFIG_LTO_CLANG_THIN
     config --enable  CONFIG_LTO_CLANG_FULL
@@ -30,8 +30,8 @@ elif [ "${ENABLE_LTO}" = "FULL" ]; then
 else
     # Covers both the explicit "NONE" value and any unrecognized value —
     # NONE is the safe fallback either way, only the log line differs.
-    [ "${ENABLE_LTO}" = "NONE" ] \
-        || warn "Unknown ENABLE_LTO value '${ENABLE_LTO}', defaulting to NONE"
+    [ "${LTO_MODE}" = "NONE" ] \
+        || warn "Unknown LTO_MODE value '${LTO_MODE}', defaulting to NONE"
     config --enable  CONFIG_LTO_CLANG_NONE
     config --disable CONFIG_LTO_CLANG_THIN
     log "LTO: NONE ✅"
