@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ======================================================
-# 🎯 Resolve Upstream Refs — pin vs candidate
+# 🔭 Scout — checkpoint reconnaissance (pin vs candidate)
 # ======================================================
 # Decides which git ref (commit SHA) each tracked upstream component
 # (ReSukiSU, SukiSU-Ultra, SuSFS) should build against for this run.
@@ -9,7 +9,7 @@
 #   queries upstream, never builds an untested candidate.
 # - RUN_MODE=Test/Warming: queries upstream's latest commit. If it
 #   differs from the pin and isn't already known-bad, that becomes the
-#   candidate for this run — and promote_or_report.sh decides after
+#   candidate for this run — and checkpoint/engine.sh decides after
 #   the build whether to promote it or blacklist it.
 #
 # Exports (via $GITHUB_ENV) for each relevant component:
@@ -21,8 +21,8 @@ set -eo pipefail
 LUMINAIRE_PATCH_DIR="${LUMINAIRE_PATCH_DIR:-$GITHUB_WORKSPACE}"
 source "${LUMINAIRE_PATCH_DIR}/functions.sh"
 
-MANIFEST="${LUMINAIRE_PATCH_DIR}/kernel/android14-6.1-lts/ksu/manifest.json"
-[ -f "$MANIFEST" ] || error "resolve_refs: manifest.json not found at ${MANIFEST}"
+MANIFEST="${LUMINAIRE_PATCH_DIR}/kernel/android14-6.1-lts/ksu/checkpoint/manifest.json"
+[ -f "$MANIFEST" ] || error "scout: manifest.json not found at ${MANIFEST}"
 
 GH_API_AUTH=()
 [ -n "${PERSONAL_TOKEN:-}" ] && GH_API_AUTH=(-H "Authorization: Bearer ${PERSONAL_TOKEN}")
@@ -54,7 +54,7 @@ latest_sha_or_empty() {
     fi
 
     if [ "$curl_exit" -ne 0 ] || [ "$http_code" != "200" ]; then
-        warn "resolve_refs: couldn't reach upstream for ${label} (curl exit ${curl_exit}, HTTP ${http_code:-000}) — using pinned ref"
+        warn "scout: couldn't reach upstream for ${label} (curl exit ${curl_exit}, HTTP ${http_code:-000}) — using pinned ref"
         rm -f "$body_file"
         echo ""
         return 0
@@ -63,7 +63,7 @@ latest_sha_or_empty() {
     sha=$(jq -r "$jq_filter" "$body_file" 2>/dev/null)
     rm -f "$body_file"
     if [ -z "$sha" ] || [ "$sha" = "null" ]; then
-        warn "resolve_refs: couldn't parse latest ${label} commit — using pinned ref"
+        warn "scout: couldn't parse latest ${label} commit — using pinned ref"
         echo ""
         return 0
     fi
@@ -81,7 +81,7 @@ resolve_component() {
     bad_list=$(jq -c ".${key}.bad" "$MANIFEST")
 
     if [ "${RUN_MODE^^}" = "RELEASE" ]; then
-        [ -n "$good" ] || error "resolve_refs: RUN_MODE=Release but no known-good ${key} pin exists yet — run a Test build first."
+        [ -n "$good" ] || error "scout: RUN_MODE=Release but no known-good ${key} pin exists yet — run a Test build first."
         ref="$good"; candidate="false"
         log "${prefix}: Release mode — pinned to ${ref:0:12} (no upstream check)"
     elif [ -z "$latest" ]; then
@@ -145,6 +145,6 @@ case "$ROOT_SOLUTION" in
         fi
         ;;
     VANILLA)
-        log "resolve_refs: VANILLA — nothing to track"
+        log "scout: VANILLA — nothing to track"
         ;;
 esac

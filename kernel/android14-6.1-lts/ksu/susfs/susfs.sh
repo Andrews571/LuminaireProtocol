@@ -8,7 +8,7 @@
 # SuSFS pin resolution — SukiSU-Ultra needs an exact commit paired with a
 # matching susfs4ksu commit (community-verified combo, not just "old enough").
 # ReSukiSU is generally compatible with SuSFS's branch tip, so it isn't
-# pinned as tightly. resolve_refs.sh exports the right *_REF beforehand.
+# pinned as tightly. checkpoint/scout.sh exports the right *_REF beforehand.
 if [ "$ROOT_SOLUTION" = "SUKISU" ]; then
     SUSFS_REF="${SUSFS_SUKISU_REF:-}"
     [ -n "$SUSFS_REF" ] || warn "SuSFS+SukiSU: no pin resolved — build will likely fail (see wishlist for known-good combos)"

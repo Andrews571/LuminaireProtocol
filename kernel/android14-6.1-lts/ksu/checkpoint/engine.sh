@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ======================================================
-# 📌 Promote or Report — post-build pin update
+# 🛡️ Engine — checkpoint save/hold (promote or blacklist)
 # ======================================================
 # Runs after the build step (always, even on failure).
 #
@@ -25,7 +25,7 @@ BUILD_OUTCOME="$1"
 shift
 COMPONENTS=("$@")
 
-MANIFEST_REL="kernel/android14-6.1-lts/ksu/manifest.json"
+MANIFEST_REL="kernel/android14-6.1-lts/ksu/checkpoint/manifest.json"
 MANIFEST="${LUMINAIRE_PATCH_DIR}/${MANIFEST_REL}"
 
 any_candidate_used="false"
@@ -36,11 +36,11 @@ for key in "${COMPONENTS[@]}"; do
 done
 
 if [ "$any_candidate_used" = "false" ]; then
-    log "promote_or_report: no candidate ref used this run — nothing to update"
+    log "checkpoint: no candidate ref used this run — nothing to update"
     exit 0
 fi
 
-[ -n "${PERSONAL_TOKEN:-}" ] || error "promote_or_report: PERSONAL_TOKEN not set — cannot push manifest update"
+[ -n "${PERSONAL_TOKEN:-}" ] || error "checkpoint: PERSONAL_TOKEN not set — cannot push manifest update"
 
 git config --global user.name  "luminaire-bot"
 git config --global user.email "luminaire-bot@users.noreply.github.com"
@@ -81,12 +81,12 @@ apply_and_push() {
             git push "$REMOTE" "HEAD:main"
         ) && return 0
 
-        warn "promote_or_report: push conflict (attempt ${attempt}/${max_attempts}) — retrying..."
+        warn "checkpoint: push conflict (attempt ${attempt}/${max_attempts}) — retrying..."
         attempt=$(( attempt + 1 ))
         sleep $(( RANDOM % 5 + 2 ))
     done
 
-    error "promote_or_report: failed to push manifest update after ${max_attempts} attempts"
+    error "checkpoint: failed to push manifest update after ${max_attempts} attempts"
 }
 
 # Opens (or leaves open) a GitHub Issue for a broken upstream component,
@@ -131,11 +131,11 @@ for key in "${COMPONENTS[@]}"; do
     ref="${!ref_var}"
 
     if [ "$BUILD_OUTCOME" = "success" ]; then
-        log "promote_or_report: promoting ${key} pin to ${ref:0:12}"
+        log "checkpoint: promoting ${key} pin to ${ref:0:12}"
         apply_and_push ".${key}.good = \"${ref}\"" "chore: bump ${key} pin to ${ref:0:12} (verified via run ${GITHUB_RUN_ID})"
         close_issue_if_open "$key"
     else
-        warn "promote_or_report: blacklisting ${key} candidate ${ref:0:12} (build failed)"
+        warn "checkpoint: blacklisting ${key} candidate ${ref:0:12} (build failed)"
         apply_and_push ".${key}.bad |= (. + [\"${ref}\"] | unique)" "chore: mark ${key} candidate ${ref:0:12} as known-bad (run ${GITHUB_RUN_ID})"
         file_issue "$key" "$ref"
     fi

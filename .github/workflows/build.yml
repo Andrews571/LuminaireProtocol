@@ -212,10 +212,10 @@ jobs:
         with:
           # v6+ persists creds via a global includeIf.gitdir config pointing
           # at a file under $RUNNER_TEMP, not .git/config in this repo — so
-          # it can't be locally unset by a later step (see promote_or_report.sh
+          # it can't be locally unset by a later step (see checkpoint/engine.sh
           # for the fallout this caused). Nothing else in this job needs git
           # auth against LuminaireProtocol itself: kernel/addon sources are
-          # public clones, and promote_or_report.sh brings its own
+          # public clones, and checkpoint/engine.sh brings its own
           # PERSONAL_TOKEN-embedded remote for its push.
           persist-credentials: false
 
@@ -254,9 +254,9 @@ jobs:
       - name: "Disk Usage"
         run: df -h && du -sh ~/kernel-cache/ 2>/dev/null || true
 
-      - name: "Resolve Upstream Refs"  # decides pinned vs candidate ref for KSU fork / SuSFS
+      - name: "Scout Upstream Refs"  # decides pinned vs candidate ref for KSU fork / SuSFS
         if: matrix.root_solution != 'VANILLA'
-        run: bash kernel/android14-6.1-lts/ksu/resolve_refs.sh
+        run: bash kernel/android14-6.1-lts/ksu/checkpoint/scout.sh
 
       - name: "Build"
         id: build
@@ -266,7 +266,7 @@ jobs:
         if: always() && env.IS_MAKE == 'true'
         run: ~/ccache-bin/ccache --show-stats
 
-      - name: "Manifest Updates"  # updates manifest.json, files an issue on failed candidates
+      - name: "Checkpoint (Promote/Blacklist)"  # updates manifest.json, files an issue on failed candidates
         if: always() && matrix.root_solution != 'VANILLA'
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
@@ -281,7 +281,7 @@ jobs:
               COMPONENTS="sukisu_builtin susfs_sukisu"
             fi
           fi
-          bash kernel/android14-6.1-lts/ksu/promote_or_report.sh "$OUTCOME" $COMPONENTS
+          bash kernel/android14-6.1-lts/ksu/checkpoint/engine.sh "$OUTCOME" $COMPONENTS
 
       - name: "Save Build Caches"  # LTO and ccache, both to GH Release
         if: always() && env.IS_MAKE == 'true'
