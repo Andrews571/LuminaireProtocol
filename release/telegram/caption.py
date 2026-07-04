@@ -19,9 +19,9 @@ VARIANT_DISPLAY = {
     "RESUKISU":       "ReSukiSU",
     "RESUKISU_SUSFS": "ReSukiSU\\+SUSFS",
     "SUKISU":         "SukiSU\\-Ultra",
-    "SUKISU_SUSFS":   "SukiSU\\-Ultra \\+SUSFS",
+    "SUKISU_SUSFS":   "SukiSU\\-Ultra\\+SUSFS",
     "KSU_NEXT":       "KernelSU\\-Next",
-    "KSU_NEXT_SUSFS": "KernelSU\\-Next \\+SUSFS",
+    "KSU_NEXT_SUSFS": "KernelSU\\-Next\\+SUSFS",
 }
 
 # Single source of truth for addon display names — shared by build_blocks()
