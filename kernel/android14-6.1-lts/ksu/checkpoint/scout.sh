@@ -145,21 +145,32 @@ case "$ROOT_SOLUTION" in
         fi
         ;;
     KSU_NEXT)
-        # KernelSU-Next's own setup.sh defaults to the latest *tag* when no
-        # ref is given (same semantic as SukiSU-Ultra's non-SUSFS branch) —
-        # match that here regardless of SUSFS, since KernelSU-Next has no
-        # separate susfs-integrated branch to switch to.
-        tag=$(latest_sha_or_empty "KernelSU-Next release" \
-            "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" '.tag_name')
-        latest=""
-        [ -n "$tag" ] && latest=$(latest_sha_or_empty "KernelSU-Next" \
-            "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/commits/${tag}" '.sha')
-        resolve_component "ksu_next" "KSU_NEXT" "$latest"
-
         if [ "$SUSFS_ENABLED" = "true" ]; then
-            latest=$(latest_sha_or_empty "SuSFS (KSU-Next pairing)" \
-                "https://gitlab.com/api/v4/projects/simonpunk%2Fsusfs4ksu/repository/commits/gki-android14-6.1" '.id')
+            # Official KernelSU-Next's dev branch dropped the manual hook
+            # API SuSFS's kernel patch depends on (moved to
+            # syscall_hook_manager) — confirmed by a real build (undefined
+            # ksu_handle_*/susfs_* symbols at link time, run 28714488530).
+            # pershoot maintains a KernelSU-Next fork with a dev-susfs
+            # branch that keeps SUSFS-compatible hooks, paired with their
+            # own susfs4ksu fork/branch below. Maintainer flags this fork
+            # as not production-ready — tracked like any other candidate.
+            latest=$(latest_sha_or_empty "KernelSU-Next (pershoot dev-susfs fork)" \
+                "https://api.github.com/repos/pershoot/KernelSU-Next/commits/dev-susfs" '.sha')
+            resolve_component "ksu_next_susfs_fork" "KSU_NEXT_SUSFS_FORK" "$latest"
+
+            latest=$(latest_sha_or_empty "SuSFS (KSU-Next pairing, pershoot fork)" \
+                "https://gitlab.com/api/v4/projects/pershoot%2Fsusfs4ksu/repository/commits/gki-android14-6.1-dev" '.id')
             resolve_component "susfs_ksu_next" "SUSFS_KSU_NEXT" "$latest"
+        else
+            # KernelSU-Next's own setup.sh defaults to the latest *tag* when
+            # no ref is given (same semantic as SukiSU-Ultra's non-SUSFS
+            # branch) — match that here.
+            tag=$(latest_sha_or_empty "KernelSU-Next release" \
+                "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" '.tag_name')
+            latest=""
+            [ -n "$tag" ] && latest=$(latest_sha_or_empty "KernelSU-Next" \
+                "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/commits/${tag}" '.sha')
+            resolve_component "ksu_next" "KSU_NEXT" "$latest"
         fi
         ;;
     VANILLA)

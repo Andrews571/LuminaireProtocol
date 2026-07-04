@@ -18,14 +18,27 @@ PATCHER_DIR="${LUMINAIRE_PATCH_DIR}/kernel/android14-6.1-lts/ksu/ksu_next"
 
 log "Integrating KernelSU-Next..."
 cd "$KERNEL_SRC"
+if [ "${SUSFS_ENABLED:-false}" = "true" ]; then
+    # Official KernelSU-Next has no SUSFS-compatible hook API on its dev
+    # branch (see susfs.sh) — pershoot's fork keeps a dev-susfs branch that
+    # does, paired with their own susfs4ksu fork. Maintainer flags this
+    # fork as not production-ready; tracked like any other candidate via
+    # checkpoint/scout.sh.
+    log "SUSFS enabled — using pershoot/KernelSU-Next's dev-susfs fork"
+    KSU_NEXT_SETUP_URL="https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh"
+    KSU_NEXT_SETUP_REF="${KSU_NEXT_SUSFS_FORK_REF:-dev-susfs}"
+else
+    KSU_NEXT_SETUP_URL="https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh"
+    KSU_NEXT_SETUP_REF="${KSU_NEXT_REF:-}"
+fi
 KSU_NEXT_SETUP=$(curl -LSs --fail --retry 3 --retry-all-errors --connect-timeout 30 \
-    "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh") \
+    "$KSU_NEXT_SETUP_URL") \
     || error "KernelSU-Next: failed to download setup.sh!"
 [ -n "$KSU_NEXT_SETUP" ] || error "KernelSU-Next: setup.sh is empty!"
 echo "$KSU_NEXT_SETUP" | grep -q "^#!" || error "KernelSU-Next: setup.sh looks invalid (no shebang)!"
-if [ -n "${KSU_NEXT_REF:-}" ]; then
-    log "Pinning KernelSU-Next to ${KSU_NEXT_REF}"
-    echo "$KSU_NEXT_SETUP" | bash -s -- "$KSU_NEXT_REF" || error "KernelSU-Next: setup.sh failed!"
+if [ -n "$KSU_NEXT_SETUP_REF" ]; then
+    log "Pinning KernelSU-Next to ${KSU_NEXT_SETUP_REF}"
+    echo "$KSU_NEXT_SETUP" | bash -s -- "$KSU_NEXT_SETUP_REF" || error "KernelSU-Next: setup.sh failed!"
 else
     echo "$KSU_NEXT_SETUP" | bash || error "KernelSU-Next: setup.sh failed!"
 fi

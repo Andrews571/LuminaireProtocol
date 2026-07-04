@@ -31,10 +31,12 @@
       "3b18216f71df189ab3d1b1ce0bdb21be1268e771"
     ]
   },
+  "ksu_next_susfs_fork": {
+    "good": "",
+    "bad": []
+  },
   "susfs_ksu_next": {
     "good": "",
-    "bad": [
-      "52eaf3b8fa50207af2ce4f78d73729dc9e1303ea"
-    ]
+    "bad": []
   }
 }

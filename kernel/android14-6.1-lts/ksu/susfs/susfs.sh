@@ -3,29 +3,37 @@
 # ======================================================
 # 🧬 SuSFS — shared apply logic (any KSU fork, android14-6.1-lts)
 # ======================================================
-# Repo: https://gitlab.com/simonpunk/susfs4ksu
+# Repo: https://gitlab.com/simonpunk/susfs4ksu (pershoot/susfs4ksu fork for
+# KernelSU-Next — see the pin-resolution comment below)
 
 # SuSFS pin resolution — SukiSU-Ultra needs an exact commit paired with a
 # matching susfs4ksu commit (community-verified combo, not just "old enough").
-# ReSukiSU and KernelSU-Next are generally compatible with SuSFS's branch
-# tip, so neither is pinned as tightly. checkpoint/scout.sh exports the
-# right *_REF beforehand.
-# NOTE: KernelSU-Next has no native SUSFS integration (no KSU_SUSFS in its
-# own Kconfig, no dedicated susfs-integrated branch like SukiSU-Ultra's
-# "builtin") — it's tracked here the same loose way as ReSukiSU. Treat this
-# pairing as unverified until confirmed by a real build.
+# ReSukiSU is generally compatible with SuSFS's branch tip, so it isn't
+# pinned as tightly. checkpoint/scout.sh exports the right *_REF beforehand.
+#
+# KernelSU-Next is a special case: its own dev branch dropped the manual
+# hook API (ksu_handle_*) that simonpunk/susfs4ksu's patch targets, in favor
+# of an internal syscall_hook_manager — confirmed by a real build (undefined
+# ksu_handle_*/susfs_* symbols at link time, run 28714488530). pershoot
+# maintains a KernelSU-Next fork (dev-susfs branch, see ksu_next.sh) paired
+# with their own susfs4ksu fork/branch, which is what's tracked below
+# instead of upstream simonpunk/susfs4ksu for this one root solution.
 if [ "$ROOT_SOLUTION" = "SUKISU" ]; then
     SUSFS_REF="${SUSFS_SUKISU_REF:-}"
     [ -n "$SUSFS_REF" ] || warn "SuSFS+SukiSU: no pin resolved — build will likely fail (see wishlist for known-good combos)"
+    SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
+    SUSFS_BRANCH="gki-android14-6.1"
 elif [ "$ROOT_SOLUTION" = "KSU_NEXT" ]; then
     SUSFS_REF="${SUSFS_KSU_NEXT_REF:-}"
+    SUSFS_REPO="https://gitlab.com/pershoot/susfs4ksu.git"
+    SUSFS_BRANCH="gki-android14-6.1-dev"
 else
     SUSFS_REF="${SUSFS_RESUKISU_REF:-}"
+    SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
+    SUSFS_BRANCH="gki-android14-6.1"
 fi
 
 KSU_DIR="${KSU_DIR:-${KERNEL_SRC}/KernelSU}"
-SUSFS_BRANCH="gki-android14-6.1"
-SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
 SUSFS_DIR="/tmp/susfs4ksu"
 PATCHER_DIR="${LUMINAIRE_PATCH_DIR}/kernel/android14-6.1-lts/ksu/susfs"
 
@@ -98,6 +106,29 @@ log "Fixing namespace.c susfs declarations (safety fallback)..."
 python3 "${PATCHER_DIR}/fix_namespace.py" "${KERNEL_SRC}/fs/namespace.c" \
     || error "SuSFS: namespace.c fix failed!"
 log "namespace.c fixed ✅"
+
+if [ "$ROOT_SOLUTION" = "KSU_NEXT" ]; then
+    # pershoot's susfs4ksu fork ships a second patch that KernelSU-Next's
+    # dev-susfs branch needs alongside the main SuSFS patch — it scopes
+    # down the manual hooks so they don't collide with KSU-Next's own
+    # syscall_hook_manager wiring. Without it, hook symbols end up
+    # undefined at link time (the same failure mode this whole pairing
+    # was built to avoid — see the comment above).
+    log "Applying KSU-Next scope-minimized manual hooks patch..."
+    HOOKS_PATCH="${SUSFS_DIR}/kernel_patches/60_scope-minimized_manual_hooks.patch"
+    if [ -f "$HOOKS_PATCH" ]; then
+        if patch -p1 --fuzz=3 --dry-run --reverse -d "$KERNEL_SRC" < "$HOOKS_PATCH" > /dev/null 2>&1; then
+            log "Scope-minimized manual hooks patch already applied, skipping."
+        else
+            patch -p1 --fuzz=3 --forward -d "$KERNEL_SRC" < "$HOOKS_PATCH" \
+                && log "Scope-minimized manual hooks patch applied ✅" \
+                || warn "Scope-minimized manual hooks patch: some hunks failed — continuing"
+            find "$KERNEL_SRC" -name "*.rej" -delete 2>/dev/null || true
+        fi
+    else
+        warn "KSU-Next scope-minimized hooks patch not found in this susfs4ksu fork — continuing without it"
+    fi
+fi
 
 rm -rf "$SUSFS_DIR"
 

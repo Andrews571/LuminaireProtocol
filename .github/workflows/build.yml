@@ -302,7 +302,7 @@ jobs:
               ;;
             KSU_NEXT)
               if [ "${{ matrix.susfs }}" = "true" ]; then
-                COMPONENTS="ksu_next susfs_ksu_next"
+                COMPONENTS="ksu_next_susfs_fork susfs_ksu_next"
               else
                 COMPONENTS="ksu_next"
               fi
