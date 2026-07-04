@@ -27,7 +27,9 @@
   },
   "ksu_next": {
     "good": "",
-    "bad": []
+    "bad": [
+      "3b18216f71df189ab3d1b1ce0bdb21be1268e771"
+    ]
   },
   "susfs_ksu_next": {
     "good": "",
