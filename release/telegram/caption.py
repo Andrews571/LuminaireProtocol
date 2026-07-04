@@ -133,7 +133,7 @@ def build_blocks(env):
     ksu_version = mdv2_code_escape(env.get("KERNEL_VARIANT_VERSION", ""))
     root_lines = [f"KSU   : {ksu_display}"]
     if not is_vanilla and ksu_version:
-        root_lines.append(f"Ver   : {ksu_version}")
+        root_lines.append(f"Version   : {ksu_version}")
     root_lines.append(f"SuSFS : {susfs_ver}")
     if is_vanilla:
         root_lines.append("Vanilla Build")
