@@ -3,11 +3,12 @@
 #
 # inject_readdir.py — inject ZeroMount hooks into fs/readdir.c
 #
-# Handles readdir.c injection for all variants (VANILLA, RESUKISU, SUKISU),
-# replacing the readdir.c hunks from the ZeroMount patch which require
-# SuSFS context to apply cleanly. The ZeroMount patch is pre-stripped of
-# its readdir.c hunk (via strip_readdir_hunk.py) before being applied,
-# so this worker is always the sole authority for readdir.c injection.
+# Handles readdir.c injection for all variants (VANILLA, RESUKISU, SUKISU,
+# KSU_NEXT), replacing the readdir.c hunks from the ZeroMount patch which
+# require SuSFS context to apply cleanly. The ZeroMount patch is
+# pre-stripped of its readdir.c hunk (via strip_readdir_hunk.py) before
+# being applied, so this worker is always the sole authority for
+# readdir.c injection.
 
 import sys
 
