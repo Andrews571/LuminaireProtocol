@@ -144,6 +144,24 @@ case "$ROOT_SOLUTION" in
             resolve_component "sukisu" "SUKISU" "$latest"
         fi
         ;;
+    KSU_NEXT)
+        # KernelSU-Next's own setup.sh defaults to the latest *tag* when no
+        # ref is given (same semantic as SukiSU-Ultra's non-SUSFS branch) —
+        # match that here regardless of SUSFS, since KernelSU-Next has no
+        # separate susfs-integrated branch to switch to.
+        tag=$(latest_sha_or_empty "KernelSU-Next release" \
+            "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" '.tag_name')
+        latest=""
+        [ -n "$tag" ] && latest=$(latest_sha_or_empty "KernelSU-Next" \
+            "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/commits/${tag}" '.sha')
+        resolve_component "ksu_next" "KSU_NEXT" "$latest"
+
+        if [ "$SUSFS_ENABLED" = "true" ]; then
+            latest=$(latest_sha_or_empty "SuSFS (KSU-Next pairing)" \
+                "https://gitlab.com/api/v4/projects/simonpunk%2Fsusfs4ksu/repository/commits/gki-android14-6.1" '.id')
+            resolve_component "susfs_ksu_next" "SUSFS_KSU_NEXT" "$latest"
+        fi
+        ;;
     VANILLA)
         log "scout: VANILLA — nothing to track"
         ;;

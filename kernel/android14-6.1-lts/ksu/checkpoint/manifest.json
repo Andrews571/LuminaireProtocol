@@ -24,5 +24,13 @@
     "bad": [
       "52eaf3b8fa50207af2ce4f78d73729dc9e1303ea"
     ]
+  },
+  "ksu_next": {
+    "good": "",
+    "bad": []
+  },
+  "susfs_ksu_next": {
+    "good": "",
+    "bad": []
   }
 }

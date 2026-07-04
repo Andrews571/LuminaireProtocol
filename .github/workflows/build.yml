@@ -36,6 +36,10 @@ on:
         description: "SukiSU-Ultra"
         type: boolean
         default: false
+      ksu_next:
+        description: "KernelSU-Next"
+        type: boolean
+        default: false
       susfs:
         description: "SuSFS"
         type: choice
@@ -155,6 +159,7 @@ jobs:
           ${{ inputs.vanilla }}  && variants+=("{\"root_solution\":\"VANILLA\",\"susfs\":false}")
           ${{ inputs.resukisu }} && variants+=("{\"root_solution\":\"RESUKISU\",\"susfs\":${SUSFS_ENABLED}}")
           ${{ inputs.sukisu }}   && variants+=("{\"root_solution\":\"SUKISU\",\"susfs\":${SUSFS_ENABLED}}")
+          ${{ inputs.ksu_next }} && variants+=("{\"root_solution\":\"KSU_NEXT\",\"susfs\":${SUSFS_ENABLED}}")
 
           if [ ${#variants[@]} -eq 0 ]; then
             echo "No root solutions selected!"
@@ -280,14 +285,29 @@ jobs:
         run: |
           OUTCOME="${{ steps.build.outcome }}"
           [ "$OUTCOME" = "success" ] && OUTCOME="success" || OUTCOME="failure"
-          COMPONENTS="${{ matrix.root_solution == 'RESUKISU' && 'resukisu' || 'sukisu' }}"
-          if [ "${{ matrix.susfs }}" = "true" ]; then
-            if [ "${{ matrix.root_solution }}" = "RESUKISU" ]; then
-              COMPONENTS="resukisu susfs_resukisu"
-            else
-              COMPONENTS="sukisu_builtin susfs_sukisu"
-            fi
-          fi
+          case "${{ matrix.root_solution }}" in
+            RESUKISU)
+              if [ "${{ matrix.susfs }}" = "true" ]; then
+                COMPONENTS="resukisu susfs_resukisu"
+              else
+                COMPONENTS="resukisu"
+              fi
+              ;;
+            SUKISU)
+              if [ "${{ matrix.susfs }}" = "true" ]; then
+                COMPONENTS="sukisu_builtin susfs_sukisu"
+              else
+                COMPONENTS="sukisu"
+              fi
+              ;;
+            KSU_NEXT)
+              if [ "${{ matrix.susfs }}" = "true" ]; then
+                COMPONENTS="ksu_next susfs_ksu_next"
+              else
+                COMPONENTS="ksu_next"
+              fi
+              ;;
+          esac
           bash kernel/android14-6.1-lts/ksu/checkpoint/engine.sh "$OUTCOME" $COMPONENTS
 
       - name: "Save Build Caches"  # LTO and ccache, both to GH Release

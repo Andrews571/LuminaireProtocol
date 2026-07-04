@@ -7,11 +7,18 @@
 
 # SuSFS pin resolution — SukiSU-Ultra needs an exact commit paired with a
 # matching susfs4ksu commit (community-verified combo, not just "old enough").
-# ReSukiSU is generally compatible with SuSFS's branch tip, so it isn't
-# pinned as tightly. checkpoint/scout.sh exports the right *_REF beforehand.
+# ReSukiSU and KernelSU-Next are generally compatible with SuSFS's branch
+# tip, so neither is pinned as tightly. checkpoint/scout.sh exports the
+# right *_REF beforehand.
+# NOTE: KernelSU-Next has no native SUSFS integration (no KSU_SUSFS in its
+# own Kconfig, no dedicated susfs-integrated branch like SukiSU-Ultra's
+# "builtin") — it's tracked here the same loose way as ReSukiSU. Treat this
+# pairing as unverified until confirmed by a real build.
 if [ "$ROOT_SOLUTION" = "SUKISU" ]; then
     SUSFS_REF="${SUSFS_SUKISU_REF:-}"
     [ -n "$SUSFS_REF" ] || warn "SuSFS+SukiSU: no pin resolved — build will likely fail (see wishlist for known-good combos)"
+elif [ "$ROOT_SOLUTION" = "KSU_NEXT" ]; then
+    SUSFS_REF="${SUSFS_KSU_NEXT_REF:-}"
 else
     SUSFS_REF="${SUSFS_RESUKISU_REF:-}"
 fi

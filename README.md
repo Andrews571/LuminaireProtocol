@@ -50,6 +50,7 @@ This repo does **not** contain kernel source — it contains all the scripts and
 | `VANILLA` | — | — |
 | `RESUKISU` | ReSukiSU | ✅ + Multi-Manager |
 | `SUKISU` | SukiSU-Ultra | — |
+| `KSU_NEXT` | KernelSU-Next | ✅ (unverified pairing) |
 
 ---
 
@@ -69,6 +70,7 @@ This repo does **not** contain kernel source — it contains all the scripts and
 - [ccache-ECS](https://github.com/cctv18/ccache-ECS) — cctv18
 - [ReSukiSU](https://github.com/ReSukiSU/ReSukiSU) — ReSukiSU Team
 - [SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra) — SukiSU Team
+- [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) — KernelSU-Next Team
 - [susfs4ksu](https://gitlab.com/simonpunk/susfs4ksu) — simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) — osm0sis
 - [Baseband Guard](https://github.com/vc-teahouse/Baseband-guard) — vc-teahouse
