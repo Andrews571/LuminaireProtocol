@@ -47,8 +47,8 @@ This repo does **not** contain kernel source — it contains all the scripts and
 |---------|----------|-------|
 | `VANILLA` | — | — |
 | `RESUKISU` | ReSukiSU | ✅ + Multi-Manager |
-| `SUKISU` | SukiSU-Ultra | — |
-| `KSUNEXT` | KernelSU-Next | ✅ (unverified pairing) |
+| `SUKISU` | SukiSU-Ultra | ✅ (via SukiSU-Ultra's `builtin` branch) |
+| `KSUNEXT` | KernelSU-Next | ✅ (via pershoot/KernelSU-Next `dev-susfs` fork) |
 
 ---
 

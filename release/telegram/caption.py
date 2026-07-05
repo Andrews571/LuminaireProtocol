@@ -20,8 +20,8 @@ VARIANT_DISPLAY = {
     "RESUKISU_SUSFS": "ReSukiSU\\+SUSFS",
     "SUKISU":         "SukiSU\\-Ultra",
     "SUKISU_SUSFS":   "SukiSU\\-Ultra\\+SUSFS",
-    "KSUNEXT":       "KernelSU\\-Next",
-    "KSUNEXT_SUSFS": "KernelSU\\-Next\\+SUSFS",
+    "KSUNEXT":        "KernelSU\\-Next",
+    "KSUNEXT_SUSFS":  "KernelSU\\-Next\\+SUSFS",
 }
 
 # Single source of truth for addon display names — shared by build_blocks()
@@ -160,8 +160,11 @@ CHANGELOG_MAX_LEN = 300
 def build_channel_caption(env, variant_links, variant_versions=None):
     """
     variant_links: dict { "VANILLA": "https://t.me/c/...", "RESUKISU_SUSFS": "...", ... }
-    variant_versions: dict { "RESUKISU": "v4.1.0 Luminaire (35002/2)", ... } — optional,
-    only forks with a resolved version string (see resukisu.sh) have an entry.
+    variant_versions: dict { "RESUKISU": "v4.1.0 (35002/2)", "SUKISU_SUSFS": "4.1.2 (40819/2)", ... } —
+    optional. Keys match variant_links' keys exactly (including the _SUSFS
+    suffix where applicable). All three forks resolve a version string
+    (see resukisu.sh / sukisu.sh / ksunext.sh's "Version string" step);
+    a fork only lacks an entry if that step itself failed to resolve anything.
     Only variants present in variant_links will be listed.
     """
     if variant_versions is None:

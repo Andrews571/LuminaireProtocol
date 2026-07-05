@@ -116,10 +116,10 @@ log "Linux version: $LINUX_VER | Kernel: $KERNEL_VERSION"
 # on any mismatch also means a stale manual CHANGELOG mention of the
 # failed variant never reaches the channel in the first place.
 # ------------------------------------------------------
-MISSING_VARIANTS_JSON=$(python3 -c "
+MISSING_VARIANTS_JSON=$(VARIANT_LINKS_JSON="$VARIANT_LINKS_JSON" python3 -c "
 import json, os
 matrix_json = os.environ.get('EXPECTED_MATRIX_JSON', '')
-links = json.loads('''$VARIANT_LINKS_JSON''')
+links = json.loads(os.environ.get('VARIANT_LINKS_JSON', '') or '{}')
 missing = []
 if matrix_json:
     try:
