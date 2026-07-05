@@ -25,10 +25,8 @@ BUILD_OUTCOME="$1"
 shift
 COMPONENTS=("$@")
 
-MANIFEST_REL="kernel/checkpoint/manifest.json"
+MANIFEST_REL="kernel/checkpoint/${KERNEL_VERSION:?checkpoint: KERNEL_VERSION not set}/manifest.json"
 MANIFEST="${LUMINAIRE_PATCH_DIR}/${MANIFEST_REL}"
-
-[ -n "${KERNEL_VERSION:-}" ] || error "checkpoint: KERNEL_VERSION not set — manifest pins are namespaced per kernel version"
 
 any_candidate_used="false"
 for key in "${COMPONENTS[@]}"; do
@@ -74,6 +72,12 @@ apply_and_push() {
         # this line, 1/1 with it). workspace/ is gitignored, so this
         # doesn't touch the in-progress kernel source tree.
         git reset -q --hard FETCH_HEAD
+
+        # First-ever checkpoint write for this kernel version: the file
+        # (and its folder) won't exist in the repo yet. That's normal, not
+        # an error — bootstrap an empty object so jq has something to patch.
+        mkdir -p "$(dirname "$MANIFEST")"
+        [ -f "$MANIFEST" ] || echo '{}' > "$MANIFEST"
 
         jq "$jq_patch" "$MANIFEST" > "${MANIFEST}.tmp" && mv "${MANIFEST}.tmp" "$MANIFEST"
 
@@ -134,11 +138,11 @@ for key in "${COMPONENTS[@]}"; do
 
     if [ "$BUILD_OUTCOME" = "success" ]; then
         log "checkpoint: promoting ${key} pin to ${ref:0:12} (kernel ${KERNEL_VERSION})"
-        apply_and_push ".\"${KERNEL_VERSION}\".${key}.good = \"${ref}\"" "chore: bump ${key} pin to ${ref:0:12} for kernel ${KERNEL_VERSION} (verified via run ${GITHUB_RUN_ID})"
+        apply_and_push ".${key}.good = \"${ref}\"" "chore: bump ${key} pin to ${ref:0:12} for kernel ${KERNEL_VERSION} (verified via run ${GITHUB_RUN_ID})"
         close_issue_if_open "$key"
     else
         warn "checkpoint: blacklisting ${key} candidate ${ref:0:12} (build failed, kernel ${KERNEL_VERSION})"
-        apply_and_push ".\"${KERNEL_VERSION}\".${key}.bad |= (. + [\"${ref}\"] | unique)" "chore: mark ${key} candidate ${ref:0:12} as known-bad for kernel ${KERNEL_VERSION} (run ${GITHUB_RUN_ID})"
+        apply_and_push ".${key}.bad |= (. + [\"${ref}\"] | unique)" "chore: mark ${key} candidate ${ref:0:12} as known-bad for kernel ${KERNEL_VERSION} (run ${GITHUB_RUN_ID})"
         file_issue "$key" "$ref"
     fi
 done

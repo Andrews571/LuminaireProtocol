@@ -30,9 +30,19 @@ set -eo pipefail
 LUMINAIRE_PATCH_DIR="${LUMINAIRE_PATCH_DIR:-$GITHUB_WORKSPACE}"
 source "${LUMINAIRE_PATCH_DIR}/functions.sh"
 
-MANIFEST="${LUMINAIRE_PATCH_DIR}/kernel/checkpoint/manifest.json"
-[ -f "$MANIFEST" ] || error "scout: manifest.json not found at ${MANIFEST}"
-[ -n "${KERNEL_VERSION:-}" ] || error "scout: KERNEL_VERSION not set — manifest pins are namespaced per kernel version"
+[ -n "${KERNEL_VERSION:-}" ] || error "scout: KERNEL_VERSION not set"
+MANIFEST="${LUMINAIRE_PATCH_DIR}/kernel/checkpoint/${KERNEL_VERSION}/manifest.json"
+
+# A kernel version with no manifest.json yet just means no pin has ever
+# been promoted for it — normal for a kernel version without checkpoint
+# history yet, not a misconfiguration. Fall back to an empty object so
+# resolve_component's // "" / // [] defaults kick in the same way they
+# would for a fork key missing from an existing manifest.
+if [ ! -f "$MANIFEST" ]; then
+    warn "scout: no manifest yet for kernel ${KERNEL_VERSION} — treating as no pins/candidates yet"
+    MANIFEST="$(mktemp)"
+    echo '{}' > "$MANIFEST"
+fi
 
 GH_API_AUTH=()
 [ -n "${PERSONAL_TOKEN:-}" ] && GH_API_AUTH=(-H "Authorization: Bearer ${PERSONAL_TOKEN}")
@@ -87,8 +97,8 @@ resolve_component() {
     local key="$1" prefix="$2" latest="$3"
     local good bad_list is_bad ref candidate
 
-    good=$(jq -r ".\"${KERNEL_VERSION}\".${key}.good // \"\"" "$MANIFEST")
-    bad_list=$(jq -c ".\"${KERNEL_VERSION}\".${key}.bad // []" "$MANIFEST")
+    good=$(jq -r ".${key}.good // \"\"" "$MANIFEST")
+    bad_list=$(jq -c ".${key}.bad // []" "$MANIFEST")
 
     if [ "${RUN_MODE^^}" = "RELEASE" ]; then
         [ -n "$good" ] || error "scout: RUN_MODE=Release but no known-good ${key} pin exists yet — run a Test build first."
