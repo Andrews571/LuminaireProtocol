@@ -198,23 +198,6 @@ def build_channel_caption(env, variant_links, variant_versions=None):
         download_lines.append(f"• [{display}]({safe_link})")
     sections.append("\n".join(download_lines))
 
-    # Missing variants — computed by channel_post.sh as (variants selected
-    # for this run) minus (variants that actually produced a download
-    # link). Surfaced explicitly so a matrix job failing silently (e.g.
-    # a variant with no promoted checkpoint pin yet) can't be masked by a
-    # manual CHANGELOG entry that still claims it shipped.
-    missing_variants_json = env.get("MISSING_VARIANTS_JSON", "")
-    try:
-        missing_variants = json.loads(missing_variants_json) if missing_variants_json else []
-    except Exception:
-        missing_variants = []
-    if missing_variants:
-        missing_lines = ["*⚠️ Not in this build*"]
-        for variant_key in missing_variants:
-            display = VARIANT_DISPLAY.get(variant_key, mdv2_escape(variant_key))
-            missing_lines.append(f"\\- {display} \\(build failed\\)")
-        sections.append("\n".join(missing_lines))
-
     # Changelog — manual input, optional, capped so it can't crowd out the
     # rest of the caption if someone pastes something huge. Rendered as a
     # code block, same style as the group caption's Root-solution/Add-ons

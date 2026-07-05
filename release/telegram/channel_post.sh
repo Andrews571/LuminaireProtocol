@@ -105,13 +105,16 @@ log "Linux version: $LINUX_VER | Kernel: $KERNEL_VERSION"
 
 # ------------------------------------------------------
 # Diff: variants selected for this run vs. variants that actually
-# produced a download link. A matrix job can fail (e.g. SUKISU with no
-# promoted checkpoint pin yet — see checkpoint/scout.sh) while others in
-# the same run succeed (fail-fast: false), and this job intentionally
-# still posts for the ones that made it (see build.yml's `always()` on
-# this job). Without this diff, a stale manual CHANGELOG entry mentioning
-# the failed variant would be the only trace of the mismatch — silent
-# both in the post and to whoever wrote the changelog text.
+# produced a download link. Release mode is only ever triggered after a
+# Test run already confirmed every selected variant is fine — so if a
+# variant that was selected here doesn't have a link, its matrix job
+# failed unexpectedly for *this* run (e.g. a checkpoint pin expired
+# between Test and Release, or an upstream regression). That's exactly
+# the situation a Release-mode failure should stay loud about instead of
+# quietly shipping a partial channel post — so this hard-fails the whole
+# job rather than posting whatever succeeded. Skipping the channel post
+# on any mismatch also means a stale manual CHANGELOG mention of the
+# failed variant never reaches the channel in the first place.
 # ------------------------------------------------------
 MISSING_VARIANTS_JSON=$(python3 -c "
 import json, os
@@ -133,12 +136,10 @@ if matrix_json:
         print(f'[warn] {e}', file=__import__('sys').stderr)
 print(json.dumps(missing))
 ")
-export MISSING_VARIANTS_JSON
 
 if [ "$MISSING_VARIANTS_JSON" != "[]" ]; then
-    warn "Variants selected but missing a link (build likely failed): ${MISSING_VARIANTS_JSON}"
+    error "Aborting channel post: variant(s) selected but missing a download link — ${MISSING_VARIANTS_JSON}. Check the Start-Build job for that variant before re-running Release."
 fi
-
 
 # ------------------------------------------------------
 # Build channel caption
@@ -157,7 +158,6 @@ GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" \
 GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" \
 VARIANT_LINKS_JSON="$VARIANT_LINKS_JSON" \
 VARIANT_VERSIONS_JSON="$VARIANT_VERSIONS_JSON" \
-MISSING_VARIANTS_JSON="$MISSING_VARIANTS_JSON" \
 python3 "$CAPTION_BUILDER" "$CAPTION_GROUP_DUMMY" "$CAPTION_CHANNEL_FILE" \
     || error "Caption builder failed"
 
