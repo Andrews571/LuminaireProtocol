@@ -56,6 +56,29 @@ if [ -n "$CANONICAL" ]; then
 else
     error "Canonical defconfig not found — config pass may have failed early"
 fi
+
+# BBG requires baseband_guard in CONFIG_LSM. defconfig.sh does this same
+# patch for MAKE builds via a live `scripts/config` pass on .config, but
+# it returns early for KLEAF before ever reaching that section — so this
+# never ran for Kleaf builds at all: CONFIG_BBG=y got set, but
+# baseband_guard never made it into the LSM ordering string, meaning the
+# LSM likely never actually initialized. $DEFCONFIG is plain text at this
+# point (post-canonicalization, no further Bazel config pass follows
+# before the real build), so this patches it the same way the fragment
+# loop above already does — directly with sed, no scripts/config needed.
+if [ "${BBG_ENABLED:-false}" = "true" ]; then
+    log "BBG: patching CONFIG_LSM in canonicalized defconfig..."
+    CURRENT_LSM=$(grep -oP '^CONFIG_LSM="\K[^"]+' "$DEFCONFIG" || true)
+    if [ -z "$CURRENT_LSM" ]; then
+        warn "BBG: CONFIG_LSM not found in canonicalized defconfig — skipping LSM patch"
+    elif [[ ",${CURRENT_LSM}," == *",baseband_guard,"* ]]; then
+        log "BBG: baseband_guard already in CONFIG_LSM ✅"
+    else
+        sed -i "s|^CONFIG_LSM=\"${CURRENT_LSM}\"|CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"|" "$DEFCONFIG"
+        log "BBG: baseband_guard appended to CONFIG_LSM ✅"
+    fi
+fi
+
 cd "$ROOT_DIR"
 
 log "Applying version patches..."

@@ -40,24 +40,18 @@ def main():
     else:
         print("namei.c: include already in correct position or not found.")
 
-    # Fix 2: Remove misplaced zeromount function call blocks
-    ZM_BLOCK = (
-        '\n#ifdef CONFIG_ZEROMOUNT\n'
-        '\tif (zeromount_is_injected_file(inode)) {\n'
-        '\t\tif (mask & MAY_WRITE)\n'
-        '\t\t\treturn -EACCES;\n'
-        '\t\treturn 0;\n'
-        '\t}\n'
-        '\n'
-        '\tif (S_ISDIR(inode->i_mode) && zeromount_is_traversal_allowed(inode, mask)) {\n'
-        '\t\treturn 0;\n'
-        '\t}\n'
-        '#endif\n'
-    )
-    count = content.count(ZM_BLOCK)
-    if count:
-        content = content.replace(ZM_BLOCK, '')
-        print(f"namei.c: removed {count} misplaced zeromount call block(s).")
+    # Fix 2 (removed): this used to strip the zeromount permission-check
+    # block wherever it appeared more than once, on the assumption the
+    # patch had duplicated it by mistake. It hadn't — the patch inserts
+    # the identical block into both generic_permission() and
+    # inode_permission(), and content.replace() with no count limit
+    # stripped every occurrence it found, deleting the enforcement from
+    # BOTH functions rather than a genuine duplicate. Confirmed by
+    # tracing real callers: generic_permission() is called directly by
+    # several filesystems' own i_op->permission (overlayfs, fuse, btrfs,
+    # kernfs, etc.), bypassing inode_permission() entirely, so a file
+    # living on one of those needs the check in generic_permission()
+    # too — losing either one is a real coverage gap, not cleanup.
 
     with open(path, 'w') as f:
         f.write(content)
