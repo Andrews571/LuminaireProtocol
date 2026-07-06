@@ -36,6 +36,8 @@ ADDON_DISPLAY_NAMES = {
     "droidspaces": "Droidspaces",
     "zeromount":   "ZeroMount",
     "nomount":     "NoMount",
+    "bore":        "BORE",
+    "adios":       "ADIOS",
 }
 
 # Mountless-engine addons are mutually exclusive (only one, or none, active
@@ -45,7 +47,7 @@ MOUNTLESS_ADDON_TOKENS = ("nomount", "zeromount")
 
 # Toggle-style addons shown as explicit Enable/Disable lines in the group
 # caption, in display order.
-TOGGLE_ADDON_ORDER = ["rekernel", "bbrv3", "bbg", "droidspaces"]
+TOGGLE_ADDON_ORDER = ["rekernel", "bbrv3", "bbg", "droidspaces", "bore", "adios"]
 
 
 def mdv2_escape(s):
