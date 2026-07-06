@@ -11,8 +11,12 @@ Original patch:  linux6.12.44-ADIOS-3.2.0.patch
 Backport changes for android14-6.1 compatibility:
 - Adapted elevator.c to use elevator_get() instead of elevator_find_get()
   (elevator_find_get() does not exist in Linux 6.1)
-- Preserved SSG as default scheduler when ADIOS default is not selected
-  (android14-6.1 uses SSG as default, not mq-deadline)
+- Preserved mq-deadline as default scheduler when ADIOS default is not
+  selected (this tree has no SSG scheduler — an earlier version of this
+  backport assumed SSG was the android14-6.1 default, which does not hold
+  for chainonyourdoor/android_kernel_common-6.1; confirmed via direct read
+  of block/elevator.c and grep across block/ turning up no ssg references
+  at all, plus a real `patch --dry-run` failing on exactly this line)
 - Fixed NULL pointer dereference in adios_completed_request() for UFS MCQ
   (rq->elv.priv[0] can be NULL for requests not going through elevator insert)
 - Verified all blk-mq APIs are fully compatible with Linux 6.1.x
@@ -66,14 +70,13 @@ diff --git a/block/Makefile b/block/Makefile
 index 10e7e6ebd..40ff9a98d 100644
 --- a/block/Makefile
 +++ b/block/Makefile
-@@ -23,6 +23,7 @@ obj-$(CONFIG_BLK_CGROUP_IOLATENCY)	+= blk-iolatency.o
+@@ -23,5 +23,6 @@ obj-$(CONFIG_BLK_CGROUP_IOLATENCY)	+= blk-iolatency.o
  obj-$(CONFIG_BLK_CGROUP_IOCOST)	+= blk-iocost.o
  obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
  obj-$(CONFIG_MQ_IOSCHED_KYBER)	+= kyber-iosched.o
 +obj-$(CONFIG_MQ_IOSCHED_ADIOS)	+= adios.o
  bfq-y				:= bfq-iosched.o bfq-wf2q.o bfq-cgroup.o
  obj-$(CONFIG_IOSCHED_BFQ)	+= bfq.o
- ssg-$(CONFIG_MQ_IOSCHED_SSG)	:= ssg-iosched.o ssg-stat.o
 diff --git a/block/adios.c b/block/adios.c
 new file mode 100644
 index 000000000..6e54b5c3b
@@ -2176,7 +2179,7 @@ index a7644462d..64211ff49 100644
  	    !blk_mq_is_shared_tags(q->tag_set->flags))
  		return NULL;
  
- 	return elevator_get(q, "ssg", false);
+ 	return elevator_get(q, "mq-deadline", false);
 +#endif
  }
  
