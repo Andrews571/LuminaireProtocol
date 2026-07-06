@@ -322,6 +322,12 @@ jobs:
 
       - name: "Save Build Caches"  # LTO and ccache, both to GH Release
         if: always() && env.IS_MAKE == 'true'
+        # All matrix variants upload to the same shared "cache" GH Release
+        # concurrently. A stuck/slow upload here previously ran unbounded
+        # up to the job's 90-minute timeout instead of failing fast — cap
+        # it well below that so a hang surfaces quickly instead of quietly
+        # eating most of the job's time budget.
+        timeout-minutes: 15
         uses: ./.github/actions/save-build-caches
         with:
           build-system:   ${{ inputs.build_system }}

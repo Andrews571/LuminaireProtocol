@@ -42,27 +42,40 @@ runs:
         fi
         echo "✅ ccache size: ${SIZE_MB}MB"
         
-        # Ensure release exists
-        gh release view cache --repo "${{ github.repository }}" > /dev/null 2>&1 || \
+        # All matrix variants upload to this same shared "cache" release at
+        # roughly the same time. A single attempt can stall or get rejected
+        # under that contention, so retry with backoff instead of failing
+        # (or hanging) on the first attempt.
+        for i in 1 2 3; do
+          gh release view cache --repo "${{ github.repository }}" > /dev/null 2>&1 && break
           gh release create cache \
             --repo "${{ github.repository }}" \
             --title "Cache Storage" \
             --notes "Automated cache storage for Luminaire build tools" \
-            --prerelease || {
-          echo "❌ Failed to create cache release"
-          rm -f "/tmp/${ASSET_NAME}"
-          exit 1
-        }
-        
+            --prerelease && break
+          echo "⚠️ Attempt ${i}/3 to ensure cache release exists failed — retrying in $((i * 5))s..."
+          sleep $((i * 5))
+          if [ "$i" -eq 3 ]; then
+            echo "❌ Failed to create cache release"
+            rm -f "/tmp/${ASSET_NAME}"
+            exit 1
+          fi
+        done
+
         # Upload
         echo "Uploading ccache asset..."
-        gh release upload cache "/tmp/${ASSET_NAME}" \
-          --repo "${{ github.repository }}" \
-          --clobber || {
-          echo "❌ Failed to upload ccache"
-          rm -f "/tmp/${ASSET_NAME}"
-          exit 1
-        }
+        for i in 1 2 3; do
+          gh release upload cache "/tmp/${ASSET_NAME}" \
+            --repo "${{ github.repository }}" \
+            --clobber && break
+          echo "⚠️ Attempt ${i}/3 to upload ccache failed — retrying in $((i * 5))s..."
+          sleep $((i * 5))
+          if [ "$i" -eq 3 ]; then
+            echo "❌ Failed to upload ccache"
+            rm -f "/tmp/${ASSET_NAME}"
+            exit 1
+          fi
+        done
         
         rm -f "/tmp/${ASSET_NAME}"
         echo "ccache saved ✅"
