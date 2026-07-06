@@ -71,8 +71,14 @@ log "SuSFS source files copied ✅"
 
 log "Applying SuSFS kernel patch..."
 KERNEL_PATCH="${SUSFS_DIR}/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch"
-[ -f "$KERNEL_PATCH" ] || { warn "SuSFS kernel patch not found — skipping"; return 0; }
-if patch -p1 --fuzz=3 --dry-run --reverse -d "$KERNEL_SRC" < "$KERNEL_PATCH" > /dev/null 2>&1; then
+if [ ! -f "$KERNEL_PATCH" ]; then
+    # Don't return/exit here — a missing/renamed patch file upstream (this
+    # has happened before, see the scope-minimized hooks history below)
+    # must not skip the Kconfig injection and CONFIG_KSU_SUSFS enablement
+    # further down. fix_namespace.py's own anchor-missing check will still
+    # catch it hard if the underlying source structure changed too.
+    warn "SuSFS kernel patch not found at ${KERNEL_PATCH} — skipping patch step, continuing with Kconfig/config setup"
+elif patch -p1 --fuzz=3 --dry-run --reverse -d "$KERNEL_SRC" < "$KERNEL_PATCH" > /dev/null 2>&1; then
     log "SuSFS kernel patch already applied, skipping."
 else
     # Pre-patch: sublevel >= 157 adds #include <trace/hooks/blk.h> to namespace.c
