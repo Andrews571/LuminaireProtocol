@@ -55,15 +55,4 @@ python3 "${PATCHER_DIR}/inject_readdir.py" "${KERNEL_SRC}/fs/readdir.c" \
     || error "ZeroMount: readdir.c injection failed!"
 log "readdir.c injected ✅"
 
-# All injected hooks (namei.c, readdir.c, task_mmu.c) are wrapped in
-# #ifdef CONFIG_ZEROMOUNT — without this, they compile out entirely and
-# ZeroMount silently becomes a no-op despite the build reporting success.
-log "Enabling ZeroMount config..."
-if ! grep -q "^CONFIG_ZEROMOUNT=y" "${KERNEL_SRC}/arch/arm64/configs/gki_defconfig"; then
-    cat >> "${KERNEL_SRC}/arch/arm64/configs/gki_defconfig" << 'CONFIGS'
-CONFIG_ZEROMOUNT=y
-CONFIGS
-fi
-log "ZeroMount config enabled ✅"
-
 log "ZeroMount integrated ✅"
