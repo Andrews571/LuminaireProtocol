@@ -60,6 +60,8 @@ This repo does **not** contain kernel source — it contains all the scripts and
 - **NoMount** — VFS path injection framework
 - **Re:Kernel** — Netlink event hook for binder/signal (frozen process detection)
 - **Droidspaces** — LXC container runtime support
+- **BORE** — Burst-Oriented Response Enhancer CPU scheduler
+- **ADIOS** — Adaptive Deadline I/O Scheduler
 
 ---
 
@@ -77,6 +79,8 @@ This repo does **not** contain kernel source — it contains all the scripts and
 - [NoMount](https://github.com/maxsteeel/nomount) — maxsteeel
 - [Re:Kernel](https://github.com/Sakion-Team/Re-Kernel) — Sakion-Team
 - [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) — ravindu644
+- [BORE Scheduler](https://github.com/firelzrd/bore-scheduler) — firelzrd
+- [ADIOS](https://github.com/firelzrd/adios) — firelzrd
 - [Greenforce Clang](https://github.com/greenforce-project/greenforce_clang) — greenforce-project
 - [Neutron Clang](https://github.com/Neutron-Toolchains/clang-build-catalogue) — Neutron-Toolchains
 - [WeebX Clang](https://github.com/XSans0/WeebX-Clang) — XSans0
