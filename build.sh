@@ -58,6 +58,7 @@ main() {
     run_addons
     mark_stage_ok CHECKPOINT_ADDONS_OK
     run_build
+    run_modules
 
     if [ "${RUN_MODE^^}" = "WARMING" ]; then
         log "🔥 Warming Complete — skipping packaging"
@@ -193,6 +194,53 @@ run_build() {
     else
         source "${LUMINAIRE_PATCH_DIR}/build/make.sh"
     fi
+    echo "::endgroup::"
+}
+
+# ======================================================
+# 🧩 POST-BUILD MODULES (out-of-tree LKMs)
+# ======================================================
+# Separate from run_addons()/run_build() on purpose: addons in run_addons()
+# patch source/defconfig and get compiled as part of the single vmlinux
+# build in run_build(). Out-of-tree LKMs (e.g. Kasumi) instead need to be
+# compiled AFTER run_build() finishes, against the now-built kernel tree's
+# Module.symvers — they can't be folded into either earlier stage.
+
+run_modules() {
+    [ "${DRY_RUN:-false}" = "true" ] && return 0
+    [ "${KASUMI_ENABLED:-false}" = "true" ] || return 0
+
+    echo "::group::🧩 Post-Build Modules"
+
+    if [ "$BUILD_SYSTEM" != "MAKE" ]; then
+        warn "Kasumi: post-build module compile is only implemented for MAKE builds right now (BUILD_SYSTEM=${BUILD_SYSTEM}) — skipping. Ship an Image without Kasumi for this run, or rerun with a Make build system."
+        echo "::endgroup::"
+        return 0
+    fi
+
+    [ -n "${KASUMI_SRC_DIR:-}" ] || error "Kasumi: KASUMI_SRC_DIR not set — kasumi.sh addon may not have run correctly!"
+
+    log "🥷 Building Kasumi LKM (kasumi_lkm.ko)..."
+
+    KASUMI_MAKE_ARGS=(
+        -C "$KERNEL_SRC"
+        O="$OUT_DIR"
+        ARCH="$ARCH"
+        CROSS_COMPILE="$TOOL_CROSS_COMPILE"
+        LLVM=1
+        LLVM_IAS=1
+        M="${KASUMI_SRC_DIR}/src"
+        CC="${TOOL_CCACHE_WRAPPERS}/clang"
+    )
+
+    make "${KASUMI_MAKE_ARGS[@]}" modules \
+        || error "Kasumi: module build failed!"
+
+    KASUMI_KO=$(find "${KASUMI_SRC_DIR}/src" -name "*.ko" | head -1)
+    [ -n "$KASUMI_KO" ] || error "Kasumi: build succeeded but no .ko file found under ${KASUMI_SRC_DIR}/src!"
+
+    export KASUMI_KO
+    log "Kasumi LKM built: $(basename "$KASUMI_KO") ✅"
     echo "::endgroup::"
 }
 
