@@ -84,6 +84,9 @@ else
     # Pre-patch: sublevel >= 157 adds #include <trace/hooks/blk.h> to namespace.c
     # which shifts context and causes hunk #1 to fail. Remove it temporarily so
     # the patch can match, then restore after.
+    # Traced to upstream commit 60dddcb8f9 (Wang Jianzheng, 2024-06-07,
+    # kernel/common fs/namespace.c) — verify against that commit if this
+    # threshold ever needs re-checking.
     if [ "${SUBLEVEL:-0}" -ge 157 ]; then
         log "Pre-patch: removing blk.h from namespace.c for context match (sublevel ${SUBLEVEL})..."
         sed -i '/^#include <trace\/hooks\/blk\.h>$/d' "${KERNEL_SRC}/fs/namespace.c"
