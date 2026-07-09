@@ -66,8 +66,6 @@ log "Branding applied ✅"
 # against both upstream Kbuild/Makefile) — only the default fallback tag
 # differs (4.1.3 vs 4.1.2).
 
-SUKISU_SHA=$(git -C "$KSU_DIR" rev-parse --short=8 HEAD 2>/dev/null)
-SUKISU_BRANCH=$(git -C "$KSU_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
 SUKISU_GIT_COMMIT_COUNT=$(git -C "$KSU_DIR" rev-list --count main 2>/dev/null || echo "")
 SUKISU_GITHUB_COMMITS=$(curl -sI --connect-timeout 10 --max-time 15 \
     "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/commits?sha=main&per_page=1" 2>/dev/null \
