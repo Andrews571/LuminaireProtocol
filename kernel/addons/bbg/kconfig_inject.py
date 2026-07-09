@@ -34,7 +34,7 @@ def main():
                     print(f"[info] bbg_kconfig_inject: injected baseband_guard at line {i + 1} ✅")
                     sys.exit(0)
                 else:
-                    print(f"[error] bbg_kconfig_inject: default line found but no 'selinux' anchor — upstream Kconfig may have changed!", file=sys.stderr)
+                    print("[error] bbg_kconfig_inject: default line found but no 'selinux' anchor — upstream Kconfig may have changed!", file=sys.stderr)
                     sys.exit(1)
 
     print(f"[error] bbg_kconfig_inject: 'config LSM' block not found in {path} — upstream Kconfig may have changed!", file=sys.stderr)
