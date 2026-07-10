@@ -47,11 +47,26 @@ jobs:
           REPO="LuminaireKernel-${{ inputs.kernel_version }}"
           echo "TARGET_BRANCH=${BRANCH}" >> $GITHUB_ENV
           echo "TARGET_REPO=${REPO}" >> $GITHUB_ENV
+          REPO_URL="https://chainonyourdoor:${{ secrets.SYNC_TOKEN }}@github.com/chainonyourdoor/${REPO}.git"
 
-          git clone --branch "${BRANCH}" \
-            "https://chainonyourdoor:${{ secrets.SYNC_TOKEN }}@github.com/chainonyourdoor/${REPO}.git" \
-            kernel-work
-          cd kernel-work
+          if git clone --branch "${BRANCH}" "${REPO_URL}" kernel-work 2>/tmp/clone.log; then
+            cd kernel-work
+          elif grep -q "Remote branch ${BRANCH} not found" /tmp/clone.log; then
+            if [ "${{ inputs.force_adopt }}" != "true" ]; then
+              echo "::error::Branch ${BRANCH} doesn't exist yet on ${REPO}. Re-run with force_adopt=true to create it (first sync on a fresh repo)."
+              exit 1
+            fi
+            echo "Branch ${BRANCH} doesn't exist yet on ${REPO} — creating it as a new orphan branch."
+            git clone "${REPO_URL}" kernel-work
+            cd kernel-work
+            git checkout --orphan "${BRANCH}"
+            git rm -rf . --quiet 2>/dev/null || true
+          else
+            echo "::error::Clone failed for a reason other than a missing branch:"
+            cat /tmp/clone.log
+            exit 1
+          fi
+
           git config user.name "chainonyourdoor"
           git config user.email "chainonyourdoor@gmail.com"
 
