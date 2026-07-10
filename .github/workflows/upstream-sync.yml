@@ -61,10 +61,12 @@ jobs:
           ACK_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts"
           git remote add ack-live "https://android.googlesource.com/kernel/common"
 
-          # Progressive deepen: start at 2000 commits, grow if the merge-base
-          # isn't found yet (skip this loop if force_adopt is explicitly true).
-          DEPTH=2000
-          git fetch ack-live "${ACK_BRANCH}" --depth="${DEPTH}"
+          # Progressive deepen: start at 100 commits (kept small so the
+          # eventual push doesn't exceed GitHub's 2GB pack limit on a fresh
+          # adopt), grow if the merge-base isn't found yet (skip this loop
+          # if force_adopt is explicitly true).
+          DEPTH=100
+          git fetch ack-live "${ACK_BRANCH}" --depth="${DEPTH}" --progress
 
           if [ "${{ inputs.force_adopt }}" != "true" ]; then
             for i in 1 2 3; do
@@ -75,7 +77,7 @@ jobs:
               fi
               DEPTH=$((DEPTH * 2))
               echo "No merge-base yet, deepening to ${DEPTH}..."
-              git fetch ack-live "${ACK_BRANCH}" --depth="${DEPTH}"
+              git fetch ack-live "${ACK_BRANCH}" --depth="${DEPTH}" --progress
             done
           fi
 
@@ -106,8 +108,8 @@ jobs:
           cd kernel-work
           git remote add stable "https://github.com/gregkh/linux.git"
 
-          DEPTH=2000
-          git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}"
+          DEPTH=100
+          git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}" --progress
 
           for i in 1 2 3; do
             if git merge-base HEAD "${{ inputs.target_stable_tag }}" >/dev/null 2>&1; then
@@ -116,7 +118,7 @@ jobs:
             fi
             DEPTH=$((DEPTH * 2))
             echo "No merge-base yet, deepening to ${DEPTH}..."
-            git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}"
+            git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}" --progress
           done
 
           if ! git merge-base HEAD "${{ inputs.target_stable_tag }}" >/dev/null 2>&1; then
