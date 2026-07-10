@@ -28,7 +28,7 @@ else
 <manifest>
   <remote name="github" fetch="https://github.com/chainonyourdoor"/>
   <remove-project name="kernel/common"/>
-  <project name="android_kernel_common-${KERNEL_VERSION}"
+  <project name="LuminaireKernel-${KERNEL_VERSION}"
            path="common"
            remote="github"
            revision="${KERNEL_BRANCH}"/>
