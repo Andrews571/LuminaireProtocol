@@ -55,19 +55,22 @@ jobs:
           echo "TARGET_BRANCH=${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts" >> $GITHUB_ENV
           echo "TARGET_REPO=LuminaireKernel-${{ inputs.kernel_version }}" >> $GITHUB_ENV
 
-      # force_adopt path: a clean, standalone `git clone --depth=N` direct
-      # from live ACK, pushed straight to the target repo/branch. This is
-      # the well-supported shallow-push pattern (fresh clone -> push
-      # elsewhere). Fetching a shallow ref INTO an already-existing clone
-      # (the non-adopt path below) is a messier case that previously failed
-      # with "did not receive expected object" — that's why adopt gets its
-      # own simpler, more reliable path instead of reusing the ff-only flow.
-      - name: "Adopt live ACK (fresh clone, force push)"
+      # force_adopt path: a FULL (non-shallow) clone direct from live ACK,
+      # pushed straight to the target repo/branch. Two earlier attempts at
+      # a shallow clone/fetch (both "fetch into an existing repo" and a
+      # clean standalone "fresh clone") failed identically on push with
+      # "did not receive expected object" — GitHub's receive-pack doesn't
+      # reliably accept a shallow-bounded pack here regardless of how the
+      # shallow clone was produced locally. A full clone sidesteps the
+      # problem entirely: there's no shallow boundary to fail on, at the
+      # cost of a slower, heavier clone (GitHub Actions runners have the
+      # disk/time budget for this).
+      - name: "Adopt live ACK (full clone, force push)"
         if: ${{ inputs.force_adopt == true }}
         run: |
           ACK_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts"
 
-          git clone --depth=100 --branch "${ACK_BRANCH}" --progress \
+          git clone --branch "${ACK_BRANCH}" --progress \
             "https://android.googlesource.com/kernel/common" ack-fresh
           cd ack-fresh
           git config user.name "chainonyourdoor"
