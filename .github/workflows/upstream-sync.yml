@@ -217,7 +217,16 @@ jobs:
         if: ${{ inputs.force_adopt == false }}
         run: |
           REPO_URL="https://chainonyourdoor:${{ secrets.SYNC_TOKEN }}@github.com/chainonyourdoor/${TARGET_REPO}.git"
-          git clone --branch "${TARGET_BRANCH}" "${REPO_URL}" kernel-work || {
+          # Shallow, not a full clone: the target repo now holds real,
+          # complete ACK history (millions of commits after the adopt step),
+          # and a routine incremental sync only ever needs recent history to
+          # fast-forward/merge from. This is safe to shallow-push from too —
+          # unlike the adopt case, the remote branch here is never empty, so
+          # none of the earlier "did not receive expected object" issues
+          # apply. If a later step needs more depth than this to find a
+          # merge-base, it deepens this same local clone with
+          # `git fetch origin --deepen=N` rather than starting over.
+          git clone --branch "${TARGET_BRANCH}" --depth=100 --progress "${REPO_URL}" kernel-work || {
             echo "::error::Clone failed. If ${TARGET_BRANCH} doesn't exist yet on ${TARGET_REPO}, re-run with force_adopt=true first."
             exit 1
           }
@@ -266,21 +275,31 @@ jobs:
           cd kernel-work
           git remote add stable "https://github.com/gregkh/linux.git"
 
-          DEPTH=100
-          git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}" --progress
+          # Deepens BOTH sides together each pass: our local clone (only
+          # 100 commits deep from the "Clone target repo" step) and the
+          # stable fetch. Deepening only the stable side isn't enough on
+          # its own — if the actual shared ancestor with linux-stable is
+          # further back than our local clone's own depth, no amount of
+          # extra stable-side history will ever find it, since the missing
+          # side is ours, not theirs.
+          LOCAL_DEPTH=100
+          STABLE_DEPTH=100
+          git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${STABLE_DEPTH}" --progress
 
           for i in 1 2 3; do
             if git merge-base HEAD "${{ inputs.target_stable_tag }}" >/dev/null 2>&1; then
-              echo "Merge-base with linux-stable found at depth ${DEPTH} ✅"
+              echo "Merge-base with linux-stable found (local depth ${LOCAL_DEPTH}, stable depth ${STABLE_DEPTH}) ✅"
               break
             fi
-            DEPTH=$((DEPTH * 2))
-            echo "No merge-base yet, deepening to ${DEPTH}..."
-            git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${DEPTH}" --progress
+            LOCAL_DEPTH=$((LOCAL_DEPTH * 2))
+            STABLE_DEPTH=$((STABLE_DEPTH * 2))
+            echo "No merge-base yet, deepening local to ${LOCAL_DEPTH} and stable to ${STABLE_DEPTH}..."
+            git fetch origin "${TARGET_BRANCH}" --deepen="${LOCAL_DEPTH}" --progress
+            git fetch stable "refs/tags/${{ inputs.target_stable_tag }}:refs/tags/${{ inputs.target_stable_tag }}" --depth="${STABLE_DEPTH}" --progress
           done
 
           if ! git merge-base HEAD "${{ inputs.target_stable_tag }}" >/dev/null 2>&1; then
-            echo "::error::No shared history with linux-stable even at depth ${DEPTH}. Can't do a clean 3-way merge — investigate manually."
+            echo "::error::No shared history with linux-stable even at local depth ${LOCAL_DEPTH} / stable depth ${STABLE_DEPTH}. Can't do a clean 3-way merge — investigate manually."
             exit 1
           fi
 
