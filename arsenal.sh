@@ -5,6 +5,14 @@
 
 set -eo pipefail
 
+# GitHub Actions captures stdout and stderr as separate buffered streams and
+# doesn't guarantee their relative order in the rendered log. log()/warn()/
+# error() write to stderr while ::group::/::endgroup:: (below) write to
+# stdout, so without this, log lines can render outside the ::group:: block
+# they were actually written inside of. Merging stderr into stdout here
+# keeps everything on one stream, preserving actual write order.
+exec 2>&1
+
 source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 
 # ======================================================
