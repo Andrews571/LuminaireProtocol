@@ -42,9 +42,15 @@ main() {
     mkdir -p "$KERNEL_DIR" "$OUT_DIR"
     run_download
 
+    # Called here (not right after run_setup) so the background apt install
+    # kicked off by setup/01_deps.sh overlaps with run_download's network-
+    # bound kernel source fetch instead of blocking in front of it. Grouped
+    # together with the final "ready" log since both are just wrap-up, not
+    # part of the download itself.
+    echo "::group::🏁 Finalize"
     wait_for_apt
-
     log "✅ Arsenal ready!"
+    echo "::endgroup::"
 }
 
 

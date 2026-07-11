@@ -51,7 +51,9 @@ main() {
     # setup/02_ccache.sh (cmake/ninja/g++) and build/make.sh (bc/bison/flex)
     # need these packages present before they run. arsenal.sh already did
     # this; build.sh previously did not, which could race on a fresh runner.
+    echo "::group::⏳ Wait for Dependencies"
     wait_for_apt
+    echo "::endgroup::"
 
     [ -d "$VERSION_PATCH_DIR" ] \
         || error "Kernel version ${KERNEL_VERSION} is not yet supported — missing ${VERSION_PATCH_DIR} (no KSU/patches implemented for this version)"
