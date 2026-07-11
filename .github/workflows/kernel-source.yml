@@ -1,5 +1,5 @@
-name: "🌀 Upstream Kernel Sync"
-run-name: "${{ inputs.android_version }} | ${{ inputs.kernel_version }}-lts"
+name: "🌱 Kernel Source"
+run-name: "${{ inputs.force_adopt && format('🌊 Adopt fresh ACK | {0}-{1}-lts', inputs.android_version, inputs.kernel_version) || (inputs.target_stable_tag != '' && format('⚡ Catch-up | {0} | {1}-{2}-lts', inputs.target_stable_tag, inputs.android_version, inputs.kernel_version) || format('🌀 Sync live ACK | {0}-{1}-lts', inputs.android_version, inputs.kernel_version)) }}"
 
 # The target repo (LuminaireKernel-{version}) keeps real git history, so it
 # can be merged against linux-stable to catch up on subversions ACK hasn't
