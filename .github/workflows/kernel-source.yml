@@ -55,6 +55,20 @@ jobs:
           echo "TARGET_BRANCH=${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts" >> $GITHUB_ENV
           echo "TARGET_REPO=LuminaireKernel-${{ inputs.kernel_version }}" >> $GITHUB_ENV
 
+          # A stable catch-up merge (target_stable_tag set, not adopting)
+          # never lands directly on the production branch — it goes to a
+          # "-staging" branch instead, so a merge that turns out to have
+          # subtle problems (something a green CI run doesn't catch) never
+          # touches what LuminaireProtocol actually builds from. Plain ACK
+          # fast-forward syncs (no stable tag) and adopt both still push
+          # straight to the real branch — those aren't introducing new,
+          # unvalidated content the way a raw stable-tag merge is.
+          if [ "${{ inputs.force_adopt }}" = "false" ] && [ -n "${{ inputs.target_stable_tag }}" ]; then
+            echo "PUSH_BRANCH=${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts-staging" >> $GITHUB_ENV
+          else
+            echo "PUSH_BRANCH=${{ inputs.android_version }}-${{ inputs.kernel_version }}-lts" >> $GITHUB_ENV
+          fi
+
       # force_adopt path: full (non-shallow) clone from live ACK, pushed as
       # many small sequential checkpoints instead of one giant push.
       #
@@ -226,10 +240,23 @@ jobs:
           # apply. If a later step needs more depth than this to find a
           # merge-base, it deepens this same local clone with
           # `git fetch origin --deepen=N` rather than starting over.
-          git clone --branch "${TARGET_BRANCH}" --depth=100 --progress "${REPO_URL}" kernel-work || {
-            echo "::error::Clone failed. If ${TARGET_BRANCH} doesn't exist yet on ${TARGET_REPO}, re-run with force_adopt=true first."
-            exit 1
-          }
+          #
+          # Try PUSH_BRANCH first (the staging branch, when catching up to a
+          # stable tag) — it may already exist from a previous catch-up
+          # attempt on this same tag/version. If it doesn't exist yet, fall
+          # back to cloning TARGET_BRANCH (production) as the starting point
+          # instead; the eventual push still goes to PUSH_BRANCH, so this
+          # effectively creates the staging branch as a copy of production
+          # plus whatever gets merged on top in the steps below.
+          if git clone --branch "${PUSH_BRANCH}" --depth=100 --progress "${REPO_URL}" kernel-work 2>/dev/null; then
+            echo "Cloned existing ${PUSH_BRANCH} (continuing a prior catch-up attempt)"
+          else
+            echo "${PUSH_BRANCH} doesn't exist yet — cloning ${TARGET_BRANCH} as the starting point instead"
+            git clone --branch "${TARGET_BRANCH}" --depth=100 --progress "${REPO_URL}" kernel-work || {
+              echo "::error::Clone failed. If ${TARGET_BRANCH} doesn't exist yet on ${TARGET_REPO}, re-run with force_adopt=true first."
+              exit 1
+            }
+          fi
           cd kernel-work
           git config user.name "chainonyourdoor"
           git config user.email "chainonyourdoor@gmail.com"
@@ -321,5 +348,9 @@ jobs:
         if: ${{ inputs.force_adopt == false }}
         run: |
           cd kernel-work
-          git push origin "${TARGET_BRANCH}"
-          echo "Pushed ${TARGET_REPO}@${TARGET_BRANCH}"
+          # Explicit refspec, not just `git push origin ${PUSH_BRANCH}` —
+          # the local branch name after "Clone target repo" could be either
+          # PUSH_BRANCH or TARGET_BRANCH depending on which one existed to
+          # clone, but the push destination is always PUSH_BRANCH.
+          git push origin "HEAD:refs/heads/${PUSH_BRANCH}"
+          echo "Pushed ${TARGET_REPO}@${PUSH_BRANCH}"
