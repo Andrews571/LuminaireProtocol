@@ -71,14 +71,16 @@ main() {
     run_postbuild
 
     if [ "${RUN_MODE^^}" = "WARMING" ]; then
-        log "🔥 Warming Complete — skipping packaging"
+        echo "========================================"
+        echo "  🔥 Warming Complete! — ${KERNEL_VARIANT}$([ "$SUSFS_ENABLED" = "true" ] && [ "$KERNEL_VARIANT" != "VANILLA" ] && echo "+SUSFS")"
+        echo "========================================"
         exit 0
     fi
 
     run_release
 
     echo "========================================"
-    echo "  Build Complete! — ${ZIP_NAME}"
+    echo "  ✅ Build Complete! — ${KERNEL_VARIANT}$([ "$SUSFS_ENABLED" = "true" ] && [ "$KERNEL_VARIANT" != "VANILLA" ] && echo "+SUSFS")"
     echo "========================================"
 }
 
