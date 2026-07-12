@@ -163,7 +163,7 @@ jobs:
       KERNEL_VERSION:   ${{ inputs.kernel_version }}
       BUILD_SYSTEM:     ${{ inputs.build_system }}
       CCACHE_DIR:       ${{ startsWith(inputs.build_system, 'Make') && format('{0}/.ccache', github.workspace) || '' }}
-      CCACHE_MAXSIZE:   ${{ startsWith(inputs.build_system, 'Make') && '1500M' || '' }}
+      CCACHE_MAXSIZE:   ${{ startsWith(inputs.build_system, 'Make') && '900M' || '' }}
 
     steps:
       - name: "Checkout"
@@ -241,7 +241,7 @@ jobs:
       BUILD_SYSTEM:                ${{ inputs.build_system }}
       ADDONS:                      ${{ needs.prepare-matrix.outputs.addons }}
       CCACHE_DIR:                  ${{ startsWith(inputs.build_system, 'Make') && format('{0}/.ccache', github.workspace) || '' }}
-      CCACHE_MAXSIZE:              ${{ startsWith(inputs.build_system, 'Make') && '1500M' || '' }}
+      CCACHE_MAXSIZE:              ${{ startsWith(inputs.build_system, 'Make') && '900M' || '' }}
 
     steps:
       - name: "Checkout"
