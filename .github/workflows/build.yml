@@ -299,6 +299,20 @@ jobs:
         id: build
         run: bash build.sh
 
+      - name: "Upload Kernel Build Artifact"
+        # ZIP_PATH is only exported (via anykernel.sh → $GITHUB_ENV) once
+        # run_release() runs in build.sh — Warming mode exits main() before
+        # that point, so there's nothing to upload there. Uploaded via the
+        # built-in Actions token, no PERSONAL_TOKEN/secrets needed at all —
+        # this is what lets a fork with zero secrets configured still get
+        # its build output, instead of it only ever reaching Telegram.
+        if: always() && steps.build.outcome == 'success' && env.ZIP_PATH != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_PATH }}
+          if-no-files-found: warn
+
       - name: "Ccache Stats"
         if: always() && env.IS_MAKE == 'true'
         run: ~/ccache-bin/ccache --show-stats

@@ -15,6 +15,17 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.gh-token }}
       run: |
+        # No write-scoped token (expected on a fork without PERSONAL_TOKEN
+        # configured) — release create/upload can't possibly succeed, so
+        # skip instead of burning 3 retries into a hard failure. Restore
+        # already degrades the same way; this just matches it on the save
+        # side, so a fork with zero secrets gets a cold-but-green build
+        # every run instead of a red one.
+        if [ -z "${GH_TOKEN:-}" ]; then
+          echo "⚠️ No gh-token provided — skipping ccache save (expected on forks without PERSONAL_TOKEN)"
+          exit 0
+        fi
+
         ASSET_NAME="${{ inputs.ccache-prefix }}ccache.tar.zst"
         cd "${{ github.workspace }}"
         

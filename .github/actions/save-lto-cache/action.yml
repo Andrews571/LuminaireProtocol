@@ -16,6 +16,14 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.gh-token }}
       run: |
+        # Same reasoning as save-caches: no write-scoped token means
+        # release create/upload can't succeed, so skip cleanly instead of
+        # hard-failing after 3 retries.
+        if [ -z "${GH_TOKEN:-}" ]; then
+          echo "⚠️ No gh-token provided — skipping LTO cache save (expected on forks without PERSONAL_TOKEN)"
+          exit 0
+        fi
+
         ASSET_NAME="${{ inputs.asset-name }}"
 
         if [ ! -d /dev/shm/ldcache ]; then
