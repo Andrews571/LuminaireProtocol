@@ -1,5 +1,5 @@
 name: "Restore ccache"
-description: "Restore ccache from GitHub Release, with public ccache fallback"
+description: "Restore ccache from GitHub Release"
 
 inputs:
   ccache-prefix:
@@ -20,7 +20,7 @@ runs:
         ASSET_NAME="${{ inputs.ccache-prefix }}ccache.tar.zst"
         cd "${{ github.workspace }}"
 
-        # Try own release cache first
+        # Try own release cache
         if gh release view cache --repo "${{ github.repository }}" > /dev/null 2>&1; then
           echo "Checking for ccache asset: ${ASSET_NAME}"
           if gh release download cache \
@@ -34,33 +34,14 @@ runs:
                 echo "ccache restored ✅"
                 exit 0
               } || {
-                echo "❌ Failed to extract ccache — will try public ccache fallback"
+                echo "❌ Failed to extract ccache — starting cold"
                 rm -f "/tmp/${ASSET_NAME}"
+                exit 0
               }
             fi
           fi
-          echo "⚠️ ccache asset not found (${ASSET_NAME}) — will try public ccache fallback"
-        else
-          echo "⚠️ Cache release not found — will try public ccache fallback"
+          echo "⚠️ ccache asset not found (${ASSET_NAME}) — starting cold"
+          exit 0
         fi
 
-        # Fallback: pull pre-seeded public ccache from cctv18/public_ccache
-        # Ensures even a first-time build gets a warm cache
-        PUBLIC_ASSET="ccache-${{ inputs.kernel-version }}.tar.zst"
-        echo "Trying public ccache fallback: ${PUBLIC_ASSET}..."
-        if gh release download -p "${PUBLIC_ASSET}" -R cctv18/public_ccache --dir /tmp/ 2>/dev/null; then
-          if [ -f "/tmp/${PUBLIC_ASSET}" ]; then
-            mkdir -p "${{ github.workspace }}/.ccache"
-            echo "Extracting public ccache..."
-            tar --zstd -xf "/tmp/${PUBLIC_ASSET}" -C "${{ github.workspace }}/.ccache" && {
-              rm -f "/tmp/${PUBLIC_ASSET}"
-              echo "Public ccache restored ✅"
-              exit 0
-            } || {
-              echo "⚠️ Failed to extract public ccache — fresh ccache will be used"
-              rm -f "/tmp/${PUBLIC_ASSET}"
-            }
-          fi
-        else
-          echo "⚠️ Public ccache not available for kernel ${{ inputs.kernel-version }} — fresh ccache will be used"
-        fi
+        echo "⚠️ Cache release not found — starting cold"
