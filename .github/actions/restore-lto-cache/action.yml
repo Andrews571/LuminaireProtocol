@@ -3,7 +3,7 @@ description: "Restore LTO linker cache (/dev/shm/ldcache) from GitHub Release"
 
 inputs:
   asset-name:
-    description: "Release asset filename, e.g. 6.1-VANILLA-THIN-Neutron-main-lto.tar.zst"
+    description: "Release asset filename, e.g. lto-data-6.1-VANILLA-NEUTRON-THIN-main.tar.zst"
     required: true
   gh-token:
     required: true

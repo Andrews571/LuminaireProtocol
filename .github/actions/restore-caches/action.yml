@@ -2,7 +2,7 @@ name: "Restore ccache"
 description: "Restore ccache from GitHub Release"
 
 inputs:
-  ccache-prefix:
+  ccache-filename:
     required: true
   gh-token:
     required: true
@@ -17,7 +17,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.gh-token }}
       run: |
-        ASSET_NAME="${{ inputs.ccache-prefix }}ccache.tar.zst"
+        ASSET_NAME="${{ inputs.ccache-filename }}"
         cd "${{ github.workspace }}"
 
         # Try own release cache

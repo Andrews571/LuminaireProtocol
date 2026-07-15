@@ -21,6 +21,9 @@ outputs:
   clang-variant:
     description: "Stripped clang variant name (e.g. Cirrus, Neutron)"
     value: ${{ steps.clang-key.outputs.clang_variant }}
+  clang-variant-upper:
+    description: "Uppercased clang variant (e.g. NEUTRON) — for cache asset filenames only, not cache keys"
+    value: ${{ steps.clang-key.outputs.clang_variant_upper }}
 
 runs:
   using: composite
@@ -33,6 +36,7 @@ runs:
         variant="${{ inputs.build-system }}"
         variant="${variant#Make - }"
         echo "clang_variant=${variant}" >> $GITHUB_OUTPUT
+        echo "clang_variant_upper=${variant^^}" >> $GITHUB_OUTPUT
 
     - name: "Restore Clang Cache"
       if: startsWith(inputs.build-system, 'Make')
@@ -55,10 +59,10 @@ runs:
       if: startsWith(inputs.build-system, 'Make')
       uses: ./.github/actions/restore-caches
       with:
-        # Must match the Save step's ccache-prefix in build.yml exactly
-        # (same field order, same susfs handling) or restore silently
+        # Must match the Save step's ccache-filename in build.yml exactly
+        # (same field order, same susfs/mode handling) or restore silently
         # misses the asset the save step actually wrote.
-        ccache-prefix: ${{ inputs.kernel-version }}-${{ inputs.kernel-variant }}${{ inputs.susfs == 'true' && '-susfs' || '' }}-${{ inputs.lto-mode != 'NONE' && format('{0}-', inputs.lto-mode) || '' }}${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.ref-name }}-
+        ccache-filename: ccache-data-${{ inputs.kernel-version }}-${{ inputs.kernel-variant }}${{ inputs.susfs == 'true' && '+SUSFS' || '' }}-${{ steps.clang-key.outputs.clang_variant_upper }}${{ inputs.lto-mode != 'NONE' && format('-{0}', inputs.lto-mode) || '' }}-${{ inputs.ref-name }}.tar.zst
         kernel-version: ${{ inputs.kernel-version }}
         gh-token: ${{ inputs.gh-token }}
 
@@ -67,7 +71,5 @@ runs:
       uses: ./.github/actions/restore-lto-cache
       with:
         # Must match the Save step's lto-asset-name in build.yml exactly.
-        # Includes susfs (a prior version of this didn't — see build.yml's
-        # comment on the Save Build Caches step for why that was a bug).
-        asset-name: ${{ inputs.kernel-version }}-${{ inputs.kernel-variant }}${{ inputs.susfs == 'true' && '-susfs' || '' }}-${{ inputs.lto-mode != 'NONE' && format('{0}-', inputs.lto-mode) || '' }}${{ steps.clang-key.outputs.clang_variant }}-${{ inputs.ref-name }}-lto.tar.zst
+        asset-name: lto-data-${{ inputs.kernel-version }}-${{ inputs.kernel-variant }}${{ inputs.susfs == 'true' && '+SUSFS' || '' }}-${{ steps.clang-key.outputs.clang_variant_upper }}${{ inputs.lto-mode != 'NONE' && format('-{0}', inputs.lto-mode) || '' }}-${{ inputs.ref-name }}.tar.zst
         gh-token:   ${{ inputs.gh-token }}

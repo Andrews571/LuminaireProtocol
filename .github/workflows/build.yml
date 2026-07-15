@@ -360,17 +360,21 @@ jobs:
         with:
           build-system:   ${{ inputs.build_system }}
           lto-mode:     ${{ inputs.lto_mode }}
-          # Both filenames share the same field order — kernel_version,
-          # kernel_variant(+susfs), lto_mode, clang variant, ref — differing
-          # only in the trailing "-ccache"/"-lto" tag, so the two asset
-          # types line up visually in the Release's Assets list instead of
-          # each having its own ad-hoc field order. lto-asset-name now
-          # includes susfs too: it didn't before, which meant a SUSFS and
-          # non-SUSFS build of the same variant/clang/ref silently clobbered
-          # and restored each other's LTO cache (their compiled IR differs,
-          # since susfs patches add code that feeds into LTO).
-          lto-asset-name: ${{ inputs.kernel_version }}-${{ matrix.kernel_variant }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.lto_mode != 'NONE' && format('{0}-', inputs.lto_mode) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ needs.prepare-matrix.outputs.safe_ref }}-lto.tar.zst
-          ccache-prefix:  ${{ inputs.kernel_version }}-${{ matrix.kernel_variant }}${{ matrix.susfs && '-susfs' || '' }}-${{ inputs.lto_mode != 'NONE' && format('{0}-', inputs.lto_mode) || '' }}${{ steps.setup-build-env.outputs.clang-variant }}-${{ needs.prepare-matrix.outputs.safe_ref }}-
+          # Both filenames share the same field order — {type}-data,
+          # kernel_version, kernel_variant(+SUSFS), clang variant (upper) +
+          # lto_mode, ref — so the two asset types line up visually in the
+          # Release's Assets list, and sort next to each other since the
+          # type prefix is the only difference. Both include susfs: the LTO
+          # one didn't before, which meant a SUSFS and non-SUSFS build of
+          # the same variant/clang/ref silently clobbered and restored each
+          # other's LTO cache (their compiled IR differs, since susfs
+          # patches add code that feeds into LTO). clang-variant-upper is a
+          # separate output from setup-build-env specifically for these
+          # filenames — GitHub Actions expressions have no uppercase
+          # function, and the original clang-variant output still needs to
+          # stay as-is for the clang cache key elsewhere.
+          lto-asset-name: lto-data-${{ inputs.kernel_version }}-${{ matrix.kernel_variant }}${{ matrix.susfs && '+SUSFS' || '' }}-${{ steps.setup-build-env.outputs.clang-variant-upper }}${{ inputs.lto_mode != 'NONE' && format('-{0}', inputs.lto_mode) || '' }}-${{ needs.prepare-matrix.outputs.safe_ref }}.tar.zst
+          ccache-filename: ccache-data-${{ inputs.kernel_version }}-${{ matrix.kernel_variant }}${{ matrix.susfs && '+SUSFS' || '' }}-${{ steps.setup-build-env.outputs.clang-variant-upper }}${{ inputs.lto_mode != 'NONE' && format('-{0}', inputs.lto_mode) || '' }}-${{ needs.prepare-matrix.outputs.safe_ref }}.tar.zst
           gh-token:       ${{ secrets.PERSONAL_TOKEN }}
 
       - name: "Upload Variant Link"  # for channel post aggregation

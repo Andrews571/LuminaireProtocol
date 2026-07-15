@@ -9,7 +9,7 @@ inputs:
   lto-asset-name:
     description: "Release asset filename for the LTO cache (only needed when lto-mode is THIN)"
     required: false
-  ccache-prefix:
+  ccache-filename:
     required: true
   gh-token:
     required: true
@@ -28,5 +28,5 @@ runs:
       if: always() && startsWith(inputs.build-system, 'Make')
       uses: ./.github/actions/save-caches
       with:
-        ccache-prefix: ${{ inputs.ccache-prefix }}
-        gh-token:      ${{ inputs.gh-token }}
+        ccache-filename: ${{ inputs.ccache-filename }}
+        gh-token:        ${{ inputs.gh-token }}

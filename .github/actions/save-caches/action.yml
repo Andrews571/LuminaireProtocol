@@ -2,7 +2,7 @@ name: "Save Caches"
 description: "Save ccache to GH Release (arsenal itself is auto-saved by actions/cache in setup-arsenal on cache miss, not here)"
 
 inputs:
-  ccache-prefix:
+  ccache-filename:
     required: true
   gh-token:
     required: true
@@ -26,7 +26,7 @@ runs:
           exit 0
         fi
 
-        ASSET_NAME="${{ inputs.ccache-prefix }}ccache.tar.zst"
+        ASSET_NAME="${{ inputs.ccache-filename }}"
         cd "${{ github.workspace }}"
         
         # Check ccache exists
