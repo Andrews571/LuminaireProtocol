@@ -2,9 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/primer/octicons/main/icons/cpu-24.svg" width="64" height="64" />
 
-# LuminaireProtocol
-
-**CI/build orchestration for the Luminaire Android GKI kernel**
+# SAGA KERNEL
 
 [![Build](https://img.shields.io/github/actions/workflow/status/chainonyourdoor/LuminaireProtocol/build.yml?branch=main&label=build&logo=github&style=for-the-badge)](https://github.com/chainonyourdoor/LuminaireProtocol/actions/workflows/build.yml)
 [![Telegram](https://img.shields.io/badge/Telegram-Luminaire-blue?style=for-the-badge&logo=telegram)](https://t.me/LuminaireProtocol)
@@ -12,26 +10,7 @@
 
 ---
 
-## 📖 What is this?
-
-**LuminaireProtocol** is a build orchestration repository for the **Luminaire** Android GKI kernel.
-This repo does **not** contain kernel source — it contains all the scripts and GitHub Actions workflows that:
-
-1. Download the kernel source from `chainonyourdoor/LuminaireKernel-*`
-2. Apply patches, integrations, and addons
-3. Build the kernel via **MAKE** or **KLEAF** (Bazel)
-4. Package and release via AnyKernel3 + Telegram
-
----
-
-## ⚙️ Build Systems
-
-- **MAKE** — Clang (Cirrus / Neutron / WeebX / ZyC) + ccache-ECS
-- **KLEAF** — AOSP Clang prebuilt via Bazel + Bazel internal cache
-
----
-
-## 🙏 Credits
+##  Credits
 
 - [ccache-ECS](https://github.com/cctv18/ccache-ECS) — cctv18
 - [ReSukiSU](https://github.com/ReSukiSU/ReSukiSU) — ReSukiSU Team
