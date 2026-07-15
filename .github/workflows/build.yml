@@ -411,6 +411,9 @@ jobs:
       - name: "Send Channel Post"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:           ${{ vars.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_ID:        ${{ vars.TELEGRAM_CHANNEL_ID }}
+          TELEGRAM_THREAD_ID_RELEASE: ${{ vars.TELEGRAM_THREAD_ID_RELEASE }}
           LUMINAIRE_PATCH_DIR: ${{ github.workspace }}
           LINKS_DIR:           /tmp/variant-links
           KERNEL_VERSION:      ${{ inputs.kernel_version }}
