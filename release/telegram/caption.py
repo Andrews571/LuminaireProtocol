@@ -5,6 +5,8 @@ from datetime import datetime
 
 
 CAPTION_LIMIT = 1024
+PUSH_TEXT_LIMIT = 4096  # sendMessage text limit — separate from the 1024
+                         # sendDocument/sendPhoto caption limit above
 
 KERNEL_VERSION_TO_ANDROID = {
     "5.10": "12",
@@ -160,6 +162,39 @@ def build_blocks(env):
 CHANGELOG_MAX_LEN = 300
 
 
+def build_push_caption(env):
+    """
+    Caption for the plain push-event notify (.github/workflows/notify.yml),
+    distinct from build_blocks()/build_channel_caption() above (those are
+    for release/test build posts). Author is linked to https://t.me/<name> —
+    this repo is a solo project, so the git author name and the Telegram
+    handle are the same person; no separate mapping needed.
+    """
+    branch      = mdv2_escape(env.get("BRANCH", ""))
+    author      = env.get("AUTHOR", "")
+    author_esc  = mdv2_escape(author)
+    author_url  = mdv2_escape_url("https://t.me/{}".format(author))
+
+    commit_short = env.get("COMMIT", "")[:7]
+    commit_url   = mdv2_escape_url(env.get("URL", ""))
+
+    title = env.get("TITLE", "")
+    body  = env.get("BODY", "")
+
+    lines = [
+        "New Commit \U0001F4CC",
+        "",
+        f"Branch : {branch}",
+        f"Author : [{author_esc}]({author_url})",
+        "```Tittle\n" + mdv2_code_escape(title) + "```",
+    ]
+    if body.strip():
+        lines.append("```Message\n" + mdv2_code_escape(body) + "```")
+    lines.append(f"Commit : [{mdv2_escape(commit_short)}]({commit_url})")
+
+    return truncate("\n".join(lines), PUSH_TEXT_LIMIT)
+
+
 def build_channel_caption(env, variant_links, variant_versions=None):
     """
     variant_links: dict { "VANILLA": "https://t.me/c/...", "RESUKISU_SUSFS": "...", ... }
@@ -251,6 +286,19 @@ def build_channel_caption(env, variant_links, variant_versions=None):
 
 
 def main():
+    # Push-notify mode: `caption.py push <output_file>` — separate from the
+    # release/test build mode below (2 positional args, no subcommand),
+    # since it's a different caller (notify.yml) with a different env-var
+    # shape (BRANCH/AUTHOR/COMMIT/URL/TITLE/BODY vs. the build-metadata
+    # vars build_blocks()/build_channel_caption() expect).
+    if len(sys.argv) == 3 and sys.argv[1] == "push":
+        env = os.environ
+        caption = build_push_caption(env)
+        with open(sys.argv[2], "w") as f:
+            f.write(caption)
+        print("[info] telegram_caption: push caption written ✅", flush=True)
+        return
+
     out_group   = sys.argv[1]
     out_channel = sys.argv[2]
 
