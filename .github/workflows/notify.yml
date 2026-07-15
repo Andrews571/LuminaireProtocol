@@ -2,6 +2,8 @@ name: "📡 Notify"
 
 on:
   push:
+    branches:
+      - '**'   # explicit: match every branch push (required once tags-ignore is set)
     tags-ignore:
       - '**'   # ignore tag pushes (e.g. the "cache" release tag) — only real branch commits notify
 
