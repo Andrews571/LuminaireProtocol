@@ -53,9 +53,3 @@ This repo does **not** contain kernel source — it contains all the scripts and
 - [ZyC Clang](https://github.com/ZyCromerZ/Clang) — ZyCromerZ
 
 ---
-
-<div align="center">
-
-Made with ❤️ by [chainonyourdoor](https://github.com/chainonyourdoor)
-
-</div>
