@@ -157,7 +157,7 @@ run_core() {
         "${core_dir}/compiler_string/compiler_string.sh"
         "${core_dir}/module_bypass/module_bypass.sh"
         "${core_dir}/openssl3_compat/openssl3_compat.sh"
-        "${core_dir}/mm_stable_catchup/mm_stable_catchup.sh"
+#        "${core_dir}/mm_stable_catchup/mm_stable_catchup.sh"
     )
     for script in "${scripts[@]}"; do
         [ -f "$script" ] || { warn "Core script not found: $(basename "$script") — skipping"; continue; }
