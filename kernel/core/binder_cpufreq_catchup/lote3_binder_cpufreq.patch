@@ -1,0 +1,220 @@
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index 1c0e695a5..33c697b33 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -3487,7 +3487,7 @@ static void binder_transaction(struct binder_proc *proc,
+ 		t->from = NULL;
+ 	t->from_pid = proc->pid;
+ 	t->from_tid = thread->pid;
+-	t->sender_euid = task_euid(proc->tsk);
++	t->sender_euid = current_euid();
+ 	t->to_proc = target_proc;
+ 	t->to_thread = target_thread;
+ 	t->code = tr->code;
+@@ -6228,7 +6228,7 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
+ {
+ 	struct binder_proc *proc = filp->private_data;
+ 
+-	if (proc->tsk != current->group_leader)
++	if (!same_thread_group(proc->tsk, current))
+ 		return -EINVAL;
+ 
+ 	binder_debug(BINDER_DEBUG_OPEN_CLOSE,
+@@ -6260,7 +6260,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
+ 	bool existing_pid = false;
+ 
+ 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
+-		     current->group_leader->pid, current->pid);
++		     current->tgid, current->pid);
+ 
+ 	proc_wrap = kzalloc(sizeof(*proc_wrap), GFP_KERNEL);
+ 	if (proc_wrap == NULL)
+@@ -6270,8 +6270,8 @@ static int binder_open(struct inode *nodp, struct file *filp)
+ 	dbitmap_init(&proc_wrapper(proc)->dmap);
+ 	spin_lock_init(&proc->inner_lock);
+ 	spin_lock_init(&proc->outer_lock);
+-	get_task_struct(current->group_leader);
+-	proc->tsk = current->group_leader;
++	proc->tsk = get_task_struct(current->group_leader);
++	proc->pid = current->tgid;
+ 	proc->cred = get_cred(filp->f_cred);
+ 	INIT_LIST_HEAD(&proc->todo);
+ 	init_waitqueue_head(&proc->freeze_wait);
+@@ -6297,7 +6297,6 @@ static int binder_open(struct inode *nodp, struct file *filp)
+ 	binder_alloc_init(&proc->alloc);
+ 
+ 	binder_stats_created(BINDER_STAT_PROC);
+-	proc->pid = current->group_leader->pid;
+ 	INIT_LIST_HEAD(&proc->delivered_death);
+ 	INIT_LIST_HEAD(&proc_wrapper(proc)->delivered_freeze);
+ 	INIT_LIST_HEAD(&proc->waiting_threads);
+diff --git a/drivers/android/binder_alloc.c b/drivers/android/binder_alloc.c
+index 7db76b255..6b2202ff7 100644
+--- a/drivers/android/binder_alloc.c
++++ b/drivers/android/binder_alloc.c
+@@ -1164,7 +1164,7 @@ static struct shrinker binder_shrinker = {
+  */
+ void binder_alloc_init(struct binder_alloc *alloc)
+ {
+-	alloc->pid = current->group_leader->pid;
++	alloc->pid = current->tgid;
+ 	alloc->mm = current->mm;
+ 	mmgrab(alloc->mm);
+ 	binder_alloc_lock_init(alloc);
+diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
+index bcb81cb56..e2c9f8dc7 100644
+--- a/drivers/cpufreq/cpufreq.c
++++ b/drivers/cpufreq/cpufreq.c
+@@ -1450,6 +1450,10 @@ static int cpufreq_online(unsigned int cpu)
+ 
+ 		blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
+ 				CPUFREQ_CREATE_POLICY, policy);
++	} else {
++		ret = freq_qos_update_request(policy->max_freq_req, policy->max);
++		if (ret < 0)
++			goto out_destroy_policy;
+ 	}
+ 
+ 	if (cpufreq_driver->get && has_target()) {
+@@ -1920,6 +1924,7 @@ void cpufreq_suspend(void)
+ 	if (!cpufreq_driver)
+ 		return;
+ 
++	cpus_read_lock();
+ 	if (!has_target() && !cpufreq_driver->suspend)
+ 		goto suspend;
+ 
+@@ -1939,6 +1944,7 @@ void cpufreq_suspend(void)
+ 
+ suspend:
+ 	cpufreq_suspended = true;
++	cpus_read_unlock();
+ }
+ 
+ /**
+diff --git a/drivers/cpufreq/cpufreq_governor.c b/drivers/cpufreq/cpufreq_governor.c
+index 3ad51a986..1f0bc290a 100644
+--- a/drivers/cpufreq/cpufreq_governor.c
++++ b/drivers/cpufreq/cpufreq_governor.c
+@@ -90,7 +90,8 @@ EXPORT_SYMBOL_GPL(sampling_rate_store);
+  * (that may be a single policy or a bunch of them if governor tunables are
+  * system-wide).
+  *
+- * Call under the @dbs_data mutex.
++ * Call under the @dbs_data->attr_set.update_lock. The per-policy
++ * update_mutex is acquired and released internally for each policy.
+  */
+ void gov_update_cpu_data(struct dbs_data *dbs_data)
+ {
+@@ -99,14 +100,15 @@ void gov_update_cpu_data(struct dbs_data *dbs_data)
+ 	list_for_each_entry(policy_dbs, &dbs_data->attr_set.policy_list, list) {
+ 		unsigned int j;
+ 
++		mutex_lock(&policy_dbs->update_mutex);
+ 		for_each_cpu(j, policy_dbs->policy->cpus) {
+ 			struct cpu_dbs_info *j_cdbs = &per_cpu(cpu_dbs, j);
+ 
+ 			j_cdbs->prev_cpu_idle = get_cpu_idle_time(j, &j_cdbs->prev_update_time,
+ 								  dbs_data->io_is_busy);
+-			if (dbs_data->ignore_nice_load)
+-				j_cdbs->prev_cpu_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
++			j_cdbs->prev_cpu_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
+ 		}
++		mutex_unlock(&policy_dbs->update_mutex);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(gov_update_cpu_data);
+@@ -118,6 +120,7 @@ unsigned int dbs_update(struct cpufreq_policy *policy)
+ 	unsigned int ignore_nice = dbs_data->ignore_nice_load;
+ 	unsigned int max_load = 0, idle_periods = UINT_MAX;
+ 	unsigned int sampling_rate, io_busy, j;
++	u64 cur_nice;
+ 
+ 	/*
+ 	 * Sometimes governors may use an additional multiplier to increase
+@@ -164,12 +167,12 @@ unsigned int dbs_update(struct cpufreq_policy *policy)
+ 
+ 		j_cdbs->prev_cpu_idle = cur_idle_time;
+ 
+-		if (ignore_nice) {
+-			u64 cur_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
++		cur_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
+ 
++		if (ignore_nice)
+ 			idle_time += div_u64(cur_nice - j_cdbs->prev_cpu_nice, NSEC_PER_USEC);
+-			j_cdbs->prev_cpu_nice = cur_nice;
+-		}
++
++		j_cdbs->prev_cpu_nice = cur_nice;
+ 
+ 		if (unlikely(!time_elapsed)) {
+ 			/*
+@@ -516,7 +519,7 @@ int cpufreq_dbs_governor_start(struct cpufreq_policy *policy)
+ 	struct dbs_governor *gov = dbs_governor_of(policy);
+ 	struct policy_dbs_info *policy_dbs = policy->governor_data;
+ 	struct dbs_data *dbs_data = policy_dbs->dbs_data;
+-	unsigned int sampling_rate, ignore_nice, j;
++	unsigned int sampling_rate, j;
+ 	unsigned int io_busy;
+ 
+ 	if (!policy->cur)
+@@ -526,9 +529,9 @@ int cpufreq_dbs_governor_start(struct cpufreq_policy *policy)
+ 	policy_dbs->rate_mult = 1;
+ 
+ 	sampling_rate = dbs_data->sampling_rate;
+-	ignore_nice = dbs_data->ignore_nice_load;
+-	io_busy = dbs_data->io_is_busy;
+ 
++	mutex_lock(&policy_dbs->update_mutex);
++	io_busy = dbs_data->io_is_busy;
+ 	for_each_cpu(j, policy->cpus) {
+ 		struct cpu_dbs_info *j_cdbs = &per_cpu(cpu_dbs, j);
+ 
+@@ -537,10 +540,9 @@ int cpufreq_dbs_governor_start(struct cpufreq_policy *policy)
+ 		 * Make the first invocation of dbs_update() compute the load.
+ 		 */
+ 		j_cdbs->prev_load = 0;
+-
+-		if (ignore_nice)
+-			j_cdbs->prev_cpu_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
++		j_cdbs->prev_cpu_nice = kcpustat_field(&kcpustat_cpu(j), CPUTIME_NICE, j);
+ 	}
++	mutex_unlock(&policy_dbs->update_mutex);
+ 
+ 	gov->start(policy);
+ 
+diff --git a/drivers/cpufreq/mediatek-cpufreq.c b/drivers/cpufreq/mediatek-cpufreq.c
+index fef68cb2b..94b23adc0 100644
+--- a/drivers/cpufreq/mediatek-cpufreq.c
++++ b/drivers/cpufreq/mediatek-cpufreq.c
+@@ -411,8 +411,8 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
+ 	info->cpu_clk = clk_get(cpu_dev, "cpu");
+ 	if (IS_ERR(info->cpu_clk)) {
+ 		ret = PTR_ERR(info->cpu_clk);
+-		return dev_err_probe(cpu_dev, ret,
+-				     "cpu%d: failed to get cpu clk\n", cpu);
++		dev_err_probe(cpu_dev, ret, "cpu%d: failed to get cpu clk\n", cpu);
++		goto out_put_cci_dev;
+ 	}
+ 
+ 	info->inter_clk = clk_get(cpu_dev, "intermediate");
+@@ -553,6 +553,10 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
+ out_free_mux_clock:
+ 	clk_put(info->cpu_clk);
+ 
++out_put_cci_dev:
++	if (info->soc_data->ccifreq_supported)
++		put_device(info->cci_dev);
++
+ 	return ret;
+ }
+ 
+@@ -570,6 +574,8 @@ static void mtk_cpu_dvfs_info_release(struct mtk_cpu_dvfs_info *info)
+ 	clk_put(info->inter_clk);
+ 	dev_pm_opp_of_cpumask_remove_table(&info->cpus);
+ 	dev_pm_opp_unregister_notifier(info->cpu_dev, &info->opp_nb);
++	if (info->soc_data->ccifreq_supported)
++		put_device(info->cci_dev);
+ }
+ 
+ static int mtk_cpufreq_init(struct cpufreq_policy *policy)
