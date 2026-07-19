@@ -1,0 +1,321 @@
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index d12781f75..63f21e071 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -760,6 +760,7 @@ static void thermal_release(struct device *dev)
+ 		     sizeof("thermal_zone") - 1)) {
+ 		tz = to_thermal_zone(dev);
+ 		thermal_zone_destroy_device_groups(tz);
++		thermal_set_governor(tz, NULL);
+ 		kfree(tz);
+ 	} else if (!strncmp(dev_name(dev), "cooling_device",
+ 			    sizeof("cooling_device") - 1)) {
+@@ -1264,8 +1265,10 @@ thermal_zone_device_register_with_trips(const char *type, struct thermal_trip *t
+ 	/* sys I/F */
+ 	/* Add nodes that are always present via .groups */
+ 	result = thermal_zone_create_device_groups(tz, mask);
+-	if (result)
++	if (result) {
++		thermal_set_governor(tz, NULL);
+ 		goto remove_id;
++	}
+ 
+ 	/* A new thermal zone needs to be updated anyway. */
+ 	atomic_set(&tz->need_update, 1);
+@@ -1400,8 +1403,6 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
+ 
+ 	cancel_delayed_work_sync(&tz->poll_queue);
+ 
+-	thermal_set_governor(tz, NULL);
+-
+ 	thermal_remove_hwmon_sysfs(tz);
+ 	ida_free(&thermal_tz_ida, tz->id);
+ 	ida_destroy(&tz->ida);
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index 5bbc44a52..a441769e7 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -46,6 +46,7 @@ static inline int f2fs_acl_count(size_t size)
+ static struct posix_acl *f2fs_acl_from_disk(const char *value, size_t size)
+ {
+ 	int i, count;
++	int err = -EINVAL;
+ 	struct posix_acl *acl;
+ 	struct f2fs_acl_header *hdr = (struct f2fs_acl_header *)value;
+ 	struct f2fs_acl_entry *entry = (struct f2fs_acl_entry *)(hdr + 1);
+@@ -69,8 +70,11 @@ static struct posix_acl *f2fs_acl_from_disk(const char *value, size_t size)
+ 
+ 	for (i = 0; i < count; i++) {
+ 
+-		if ((char *)entry > end)
++		if (unlikely((char *)entry +
++				sizeof(struct f2fs_acl_entry_short) > end)) {
++			err = -EFSCORRUPTED;
+ 			goto fail;
++		}
+ 
+ 		acl->a_entries[i].e_tag  = le16_to_cpu(entry->e_tag);
+ 		acl->a_entries[i].e_perm = le16_to_cpu(entry->e_perm);
+@@ -85,6 +89,11 @@ static struct posix_acl *f2fs_acl_from_disk(const char *value, size_t size)
+ 			break;
+ 
+ 		case ACL_USER:
++			if (unlikely((char *)entry +
++					sizeof(struct f2fs_acl_entry) > end)) {
++				err = -EFSCORRUPTED;
++				goto fail;
++			}
+ 			acl->a_entries[i].e_uid =
+ 				make_kuid(&init_user_ns,
+ 						le32_to_cpu(entry->e_id));
+@@ -92,6 +101,11 @@ static struct posix_acl *f2fs_acl_from_disk(const char *value, size_t size)
+ 					sizeof(struct f2fs_acl_entry));
+ 			break;
+ 		case ACL_GROUP:
++			if (unlikely((char *)entry +
++					sizeof(struct f2fs_acl_entry) > end)) {
++				err = -EFSCORRUPTED;
++				goto fail;
++			}
+ 			acl->a_entries[i].e_gid =
+ 				make_kgid(&init_user_ns,
+ 						le32_to_cpu(entry->e_id));
+@@ -107,7 +121,7 @@ static struct posix_acl *f2fs_acl_from_disk(const char *value, size_t size)
+ 	return acl;
+ fail:
+ 	posix_acl_release(acl);
+-	return ERR_PTR(-EINVAL);
++	return ERR_PTR(err);
+ }
+ 
+ static void *f2fs_acl_to_disk(struct f2fs_sb_info *sbi,
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index e1e209a8c..74ac0f265 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -368,6 +368,8 @@ static void f2fs_write_end_io(struct bio *bio)
+ 
+ 		f2fs_bug_on(sbi, page->mapping == NODE_MAPPING(sbi) &&
+ 					page->index != nid_of_node(page));
++		if (f2fs_in_warm_node_list(sbi, page))
++			f2fs_del_fsync_node_entry(sbi, page);
+ 
+ 		dec_page_count(sbi, type);
+ 
+@@ -379,8 +381,6 @@ static void f2fs_write_end_io(struct bio *bio)
+ 				wq_has_sleeper(&sbi->cp_wait))
+ 			wake_up(&sbi->cp_wait);
+ 
+-		if (f2fs_in_warm_node_list(sbi, page))
+-			f2fs_del_fsync_node_entry(sbi, page);
+ 		clear_page_private_gcing(page);
+ 		end_page_writeback(page);
+ 	}
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 68b3fe6b4..dcbf96fc2 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3709,7 +3709,7 @@ bool f2fs_is_checkpointed_data(struct f2fs_sb_info *sbi, block_t blkaddr);
+ int f2fs_start_discard_thread(struct f2fs_sb_info *sbi);
+ void f2fs_drop_discard_cmd(struct f2fs_sb_info *sbi);
+ void f2fs_stop_discard_thread(struct f2fs_sb_info *sbi);
+-bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi);
++bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi, bool need_check);
+ void f2fs_clear_prefree_segments(struct f2fs_sb_info *sbi,
+ 					struct cp_control *cpc);
+ void f2fs_dirty_to_prefree(struct f2fs_sb_info *sbi);
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 20aadead1..0512b428a 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1824,7 +1824,15 @@ static int f2fs_expand_inode_data(struct inode *inode, loff_t offset,
+ 		struct f2fs_lock_context lc;
+ 
+ 		block_t sec_blks = CAP_BLKS_PER_SEC(sbi);
+-		block_t sec_len = roundup(map.m_len, sec_blks);
++		block_t sec_len;
++
++		if (map.m_lblk % sec_blks) {
++			map.m_lblk = rounddown(map.m_lblk, sec_blks);
++			map.m_len = pg_end - map.m_lblk;
++			if (off_end)
++				map.m_len++;
++		}
++		sec_len = roundup(map.m_len, sec_blks);
+ 
+ 		map.m_len = sec_blks;
+ next_alloc:
+diff --git a/fs/f2fs/inline.c b/fs/f2fs/inline.c
+index 70eba1619..4e352849f 100644
+--- a/fs/f2fs/inline.c
++++ b/fs/f2fs/inline.c
+@@ -775,7 +775,7 @@ int f2fs_read_inline_dir(struct file *file, struct dir_context *ctx,
+ int f2fs_inline_data_fiemap(struct inode *inode,
+ 		struct fiemap_extent_info *fieinfo, __u64 start, __u64 len)
+ {
+-	__u64 byteaddr, ilen;
++	__u64 byteaddr = 0, ilen;
+ 	__u32 flags = FIEMAP_EXTENT_DATA_INLINE | FIEMAP_EXTENT_NOT_ALIGNED |
+ 		FIEMAP_EXTENT_LAST;
+ 	struct node_info ni;
+@@ -808,9 +808,14 @@ int f2fs_inline_data_fiemap(struct inode *inode,
+ 	if (err)
+ 		goto out;
+ 
+-	byteaddr = (__u64)ni.blk_addr << inode->i_sb->s_blocksize_bits;
+-	byteaddr += (char *)inline_data_addr(inode, ipage) -
+-					(char *)F2FS_INODE(ipage);
++	if (__is_valid_data_blkaddr(ni.blk_addr)) {
++		byteaddr = (__u64)ni.blk_addr << inode->i_sb->s_blocksize_bits;
++		byteaddr += (char *)inline_data_addr(inode, ipage) -
++						(char *)F2FS_INODE(ipage);
++	} else {
++		f2fs_bug_on(F2FS_I_SB(inode), ni.blk_addr != NEW_ADDR);
++		flags |= FIEMAP_EXTENT_DELALLOC | FIEMAP_EXTENT_UNKNOWN;
++	}
+ 	err = fiemap_fill_next_extent(fieinfo, start, byteaddr, ilen, flags);
+ 	trace_f2fs_fiemap(inode, start, byteaddr, ilen, flags, err);
+ out:
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 4e7d69e08..e12828945 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -479,8 +479,13 @@ static int do_read_inode(struct inode *inode)
+ 
+ static bool is_meta_ino(struct f2fs_sb_info *sbi, unsigned int ino)
+ {
+-	return ino == F2FS_NODE_INO(sbi) || ino == F2FS_META_INO(sbi) ||
+-		ino == F2FS_COMPRESS_INO(sbi);
++	if (ino == F2FS_NODE_INO(sbi) || ino == F2FS_META_INO(sbi))
++		return true;
++#ifdef CONFIG_F2FS_FS_COMPRESSION
++	if (test_opt(sbi, COMPRESS_CACHE) && ino == F2FS_COMPRESS_INO(sbi))
++		return true;
++#endif
++	return false;
+ }
+ 
+ struct inode *f2fs_iget(struct super_block *sb, unsigned long ino)
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 7eb7b709b..6b428ce79 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -3431,10 +3431,10 @@ void f2fs_destroy_node_manager(struct f2fs_sb_info *sbi)
+ 	}
+ 	kvfree(nm_i->free_nid_count);
+ 
+-	kvfree(nm_i->nat_bitmap);
++	kfree(nm_i->nat_bitmap);
+ 	kvfree(nm_i->nat_bits);
+ #ifdef CONFIG_F2FS_CHECK_FS
+-	kvfree(nm_i->nat_bitmap_mir);
++	kfree(nm_i->nat_bitmap_mir);
+ #endif
+ 	sbi->nm_info = NULL;
+ 	kfree(nm_i);
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index bd401df8c..f791aa452 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1781,7 +1781,7 @@ void f2fs_stop_discard_thread(struct f2fs_sb_info *sbi)
+  *
+  * Return true if issued all discard cmd or no discard cmd need issue, otherwise return false.
+  */
+-bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi)
++bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi, bool need_check)
+ {
+ 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
+ 	struct discard_policy dpolicy;
+@@ -1798,7 +1798,7 @@ bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi)
+ 	/* just to make sure there is no pending discard commands */
+ 	__wait_all_discard_cmd(sbi, NULL);
+ 
+-	f2fs_bug_on(sbi, atomic_read(&dcc->discard_cmd_cnt));
++	f2fs_bug_on(sbi, need_check && atomic_read(&dcc->discard_cmd_cnt));
+ 	return !dropped;
+ }
+ 
+@@ -2252,7 +2252,7 @@ static void destroy_discard_cmd_control(struct f2fs_sb_info *sbi)
+ 	 * Recovery can cache discard commands, so in error path of
+ 	 * fill_super(), it needs to give a chance to handle them.
+ 	 */
+-	f2fs_issue_discard_timeout(sbi);
++	f2fs_issue_discard_timeout(sbi, true);
+ 
+ 	kfree(dcc);
+ 	SM_I(sbi)->dcc_info = NULL;
+@@ -5387,9 +5387,9 @@ static void destroy_sit_info(struct f2fs_sb_info *sbi)
+ 	kvfree(sit_i->dirty_sentries_bitmap);
+ 
+ 	SM_I(sbi)->sit_info = NULL;
+-	kvfree(sit_i->sit_bitmap);
++	kfree(sit_i->sit_bitmap);
+ #ifdef CONFIG_F2FS_CHECK_FS
+-	kvfree(sit_i->sit_bitmap_mir);
++	kfree(sit_i->sit_bitmap_mir);
+ 	kvfree(sit_i->invalid_segmap);
+ #endif
+ 	kfree(sit_i);
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index a838bffa5..df342632c 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1675,7 +1675,7 @@ static void f2fs_put_super(struct super_block *sb)
+ 	}
+ 
+ 	/* be sure to wait for any on-going discard commands */
+-	done = f2fs_issue_discard_timeout(sbi);
++	done = f2fs_issue_discard_timeout(sbi, true);
+ 	if (f2fs_realtime_discard_enable(sbi) && !sbi->discard_blks && done) {
+ 		struct cp_control cpc = {
+ 			.reason = CP_UMOUNT | CP_TRIMMED,
+@@ -1737,7 +1737,7 @@ static void f2fs_put_super(struct super_block *sb)
+ 	destroy_percpu_info(sbi);
+ 	f2fs_destroy_iostat(sbi);
+ 	for (i = 0; i < NR_PAGE_TYPE; i++)
+-		kvfree(sbi->write_io[i]);
++		kfree(sbi->write_io[i]);
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	utf8_unload(sb->s_encoding);
+ #endif
+@@ -2586,7 +2586,12 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+ 			need_stop_discard = true;
+ 		} else {
+ 			f2fs_stop_discard_thread(sbi);
+-			f2fs_issue_discard_timeout(sbi);
++			/*
++			 * f2fs_ioc_fitrim() won't race w/ "remount ro"
++			 * so it's safe to check discard_cmd_cnt in
++			 * f2fs_issue_discard_timeout().
++			 */
++			f2fs_issue_discard_timeout(sbi, *flags & SB_RDONLY);
+ 			need_restart_discard = true;
+ 		}
+ 	}
+@@ -4745,7 +4750,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ 		if (err)
+ 			goto sync_free_meta;
+ 	}
+-	kvfree(options);
++	kfree(options);
+ 
+ 	/* recover broken superblock */
+ 	if (recovery) {
+@@ -4826,7 +4831,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ 	f2fs_destroy_iostat(sbi);
+ free_bio_info:
+ 	for (i = 0; i < NR_PAGE_TYPE; i++)
+-		kvfree(sbi->write_io[i]);
++		kfree(sbi->write_io[i]);
+ 
+ #if IS_ENABLED(CONFIG_UNICODE)
+ 	utf8_unload(sb->s_encoding);
+@@ -4838,7 +4843,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ 		kfree(F2FS_OPTION(sbi).s_qf_names[i]);
+ #endif
+ 	fscrypt_free_dummy_policy(&F2FS_OPTION(sbi).dummy_enc_policy);
+-	kvfree(options);
++	kfree(options);
+ free_sb_buf:
+ 	kfree(raw_super);
+ free_sbi:
