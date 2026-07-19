@@ -87,6 +87,14 @@ on:
         description: "NTSync (Wine/Winlator compatibility)"
         type: boolean
         default: true
+      lz4zstd:
+        description: "LZ4 1.10.0 + ZSTD 1.5.7 (ZRAM compression bump)"
+        type: boolean
+        default: true
+      lz4kd:
+        description: "LZ4KD (ZRAM compression optimization)"
+        type: boolean
+        default: true
       lto_mode:
         description: "LTO"
         type: choice
