@@ -64,8 +64,15 @@ if [ "${LZ4KD_ENABLED:-false}" = "true" ]; then
     config --enable CONFIG_LZ4K_DECOMPRESS
     config --enable CONFIG_LZ4KD_COMPRESS
     config --enable CONFIG_LZ4KD_DECOMPRESS
+    config --enable CONFIG_ZRAM
+    config --disable CONFIG_ZRAM_DEF_COMP_LZ4
+    config --enable CONFIG_ZRAM_DEF_COMP_LZ4KD
     LZ4KD_STATE=$(config --state CONFIG_CRYPTO_LZ4KD 2>/dev/null || echo "unknown")
+    ZRAM_STATE=$(config --state CONFIG_ZRAM 2>/dev/null || echo "unknown")
+    ZRAM_DEF_STATE=$(config --state CONFIG_ZRAM_DEF_COMP_LZ4KD 2>/dev/null || echo "unknown")
     log "LZ4KD: CONFIG_CRYPTO_LZ4KD state after scripts/config --enable: ${LZ4KD_STATE}"
+    log "LZ4KD: CONFIG_ZRAM state after scripts/config --enable (should be 'y', not 'm'): ${ZRAM_STATE}"
+    log "LZ4KD: CONFIG_ZRAM_DEF_COMP_LZ4KD state after scripts/config --enable: ${ZRAM_DEF_STATE}"
 fi
 
 # BBG requires baseband_guard in CONFIG_LSM — patch here because .config
