@@ -56,6 +56,18 @@ else
     log "DAMON: reclaim+lru_sort enabled via CONFIG_CMDLINE ✅"
 fi
 
+if [ "${LZ4KD_ENABLED:-false}" = "true" ]; then
+    config --enable CONFIG_CRYPTO_LZ4HC
+    config --enable CONFIG_CRYPTO_LZ4K
+    config --enable CONFIG_CRYPTO_LZ4KD
+    config --enable CONFIG_LZ4K_COMPRESS
+    config --enable CONFIG_LZ4K_DECOMPRESS
+    config --enable CONFIG_LZ4KD_COMPRESS
+    config --enable CONFIG_LZ4KD_DECOMPRESS
+    LZ4KD_STATE=$(config --state CONFIG_CRYPTO_LZ4KD 2>/dev/null || echo "unknown")
+    log "LZ4KD: CONFIG_CRYPTO_LZ4KD state after scripts/config --enable: ${LZ4KD_STATE}"
+fi
+
 # BBG requires baseband_guard in CONFIG_LSM — patch here because .config
 # is not available when bbg.sh runs (before make defconfig)
 if [ "${BBG_ENABLED:-false}" = "true" ]; then
