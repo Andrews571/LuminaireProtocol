@@ -272,16 +272,16 @@ def build_channel_caption(env, variant_links, variant_versions=None):
     sections.append(trace_line)
 
     # Bug reports point to the community discussion group, not the CI group
-    group_url = mdv2_escape_url("https://t.me/{}".format(env.get("TELEGRAM_GROUP", "")))
+    group_url = mdv2_escape_url("https://t.me/sagakernel".format(env.get("TELEGRAM_GROUP", "")))
     sections.append(
-        f"Found a bug? Let's discuss it in [Luminaire Lab]({group_url})"
+        f"Found a bug? Let's discuss it in [SAGA CHAT]({group_url})"
     )
 
     date_str = mdv2_escape(datetime.now().strftime("%-d %b %Y"))
-    donate_url = mdv2_escape_url("https://sociabuzz.com/chainonyourdoor")
-    sections.append(f"{date_str} \u00b7 [Support]({donate_url})")
+#    donate_url = mdv2_escape_url("https://sociabuzz.com/chainonyourdoor")
+#    sections.append(f"{date_str} \u00b7 [Support]({donate_url})")
 
-    sections.append("\\#GKI \\#Kernel \\#Luminaire")
+    sections.append("\\#GKI \\#SAGAKernel")
 
     caption = "\n\n".join(sections)
     return truncate(caption, CAPTION_LIMIT)
