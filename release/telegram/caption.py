@@ -247,7 +247,7 @@ def build_channel_caption(env, variant_links, variant_versions=None):
             f"> • [{display}]({safe_link})"
         )
 
-    sections.append("\n\n".join(download_lines))
+    sections.append("\n".join(download_lines))
 
     # Changelog — manual input, optional, capped so it can't crowd out the
     # rest of the caption if someone pastes something huge. Rendered as a
