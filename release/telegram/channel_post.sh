@@ -34,6 +34,10 @@ if [ -z "${TELEGRAM_CHANNEL_ID:-}" ]; then
     warn "Skipping channel post: TELEGRAM_CHANNEL_ID not set in config.sh"
     exit 0
 fi
+if [ -z "${TELEGRAM_DISCUSSION_ID:-}" ]; then
+    warn "Skipping channel post: TELEGRAM_DISCUSSION_ID not set in config.sh"
+    exit 0
+fi
 
 # ------------------------------------------------------
 # Find banner
@@ -168,12 +172,21 @@ rm -f "$CAPTION_CHANNEL_FILE" "$CAPTION_GROUP_DUMMY"
 # Send photo to channel
 # ------------------------------------------------------
 log "📸 Sending channel post..."
-if telegram_api_call "sendPhoto" /tmp/tg_channel_response.json "Channel send" \
-        -F "chat_id=${TELEGRAM_CHANNEL_ID}" \
-        -F "parse_mode=MarkdownV2" \
-        -F "photo=@${BANNER_PATH}" \
-        -F "caption=${CAPTION_CHANNEL}"; then
-    log "Channel post sent ✅"
+
+if api_call "sendPhoto" "/tmp/tg_channel_response.json" "Channel send" \
+    -F "chat_id=${TELEGRAM_CHANNEL_ID}" \
+    -F "parse_mode=MarkdownV2" \
+    -F "photo=@${BANNER_PATH}" \
+    -F "caption=${CAPTION_CHANNEL}" \
+&&
+   api_call "sendPhoto" "/tmp/tg_discussion_response.json" "Discussion send" \
+    -F "chat_id=${TELEGRAM_DISCUSSION_ID}" \
+    -F "parse_mode=MarkdownV2" \
+    -F "photo=@${BANNER_PATH}" \
+    -F "caption=${CAPTION_CHANNEL}"; then
+
+    log "✅ Channel and discussion posts sent"
+
 fi
 
-rm -f /tmp/tg_channel_response.json
+rm -f /tmp/tg_channel_response.json /tmp/tg_discussion_response.json
