@@ -128,8 +128,8 @@ def build_blocks(env):
                         env.get("GITHUB_RUN_ID", ""))
     run_id          = env.get("GITHUB_RUN_ID", "")
 
-    block_luminaire = (
-        "```Luminaire\n"
+    block_saga = (
+        "```SAGA\n"
         f"Linux        : {linux_ver}\n"
         f"Build System : {build_system}\n"
         f"Compiler     : {compiler}\n"
@@ -159,7 +159,7 @@ def build_blocks(env):
         mdv2_escape_url(run_url),
     )
 
-    return block_luminaire, block_root, block_addons, footer
+    return block_saga, block_root, block_addons, footer
 
 
 CHANGELOG_MAX_LEN = 300
@@ -218,7 +218,7 @@ def build_channel_caption(env, variant_links, variant_versions=None):
     major_minor = ".".join(linux_ver.split(".")[:2]) + ".x"
 
     sections = [
-        f"*Luminaire \\| Protocol \\| {mdv2_escape(linux_ver)}*\n"
+        f"*SAGA \\| Build \\| {mdv2_escape(linux_ver)}*\n"
         f"*GKI Kernel \\| Android {mdv2_escape(android_ver)} \\| Linux {mdv2_escape(major_minor)}*"
     ]
 
@@ -307,9 +307,9 @@ def main():
 
     env = os.environ
 
-    block_luminaire, block_root, block_addons, footer = build_blocks(env)
+    block_saga, block_root, block_addons, footer = build_blocks(env)
 
-    caption_group = "\n".join([block_luminaire, block_root, block_addons, footer])
+    caption_group = "\n".join([block_saga, block_root, block_addons, footer])
     caption_group = truncate(caption_group, CAPTION_LIMIT)
 
     # Channel caption — built from VARIANT_LINKS_JSON (provided by channel_post.sh)
