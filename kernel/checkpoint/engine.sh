@@ -43,8 +43,8 @@ fi
 
 [ -n "${PERSONAL_TOKEN:-}" ] || error "checkpoint: PERSONAL_TOKEN not set — cannot push manifest update"
 
-git config --global user.name  "luminaire-bot"
-git config --global user.email "luminaire-bot@users.noreply.github.com"
+git config --global user.name  "SAGA-bot"
+git config --global user.email "saga-bot@users.noreply.github.com"
 
 # The github-actions[bot]/403 push failure is fixed in build.yml's
 # Start-Build checkout step (persist-credentials: false), not here.
