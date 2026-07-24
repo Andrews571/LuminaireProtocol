@@ -95,7 +95,7 @@ on:
         type: boolean
         default: true
       le9uo:
-        description: "RAM oprimization (Prevent system freezes)"
+        description: "le9uo RAM optimization (Prevent system freezes)"
         type: boolean
         default: true  
       lto_mode:
